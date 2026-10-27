@@ -1,9 +1,22 @@
+import { BottomNav } from './app/BottomNav'
+import { useRoute, type Route } from './app/router'
+
+function Screen({ route }: { route: Route }) {
+  switch (route.name) {
+    default:
+      return <p className="text-stone-500">Coming soon.</p>
+  }
+}
+
 function App() {
+  const route = useRoute()
   return (
-    <main className="mx-auto flex h-full max-w-md flex-col items-center justify-center gap-2 p-4">
-      <h1 className="text-3xl font-bold">Marble Jar</h1>
-      <p className="text-stone-500">Every win drops a marble.</p>
-    </main>
+    <div className="flex min-h-full flex-col">
+      <main className="mx-auto w-full max-w-md flex-1 px-4 pt-6 pb-8">
+        <Screen route={route} />
+      </main>
+      <BottomNav route={route} />
+    </div>
   )
 }
 
