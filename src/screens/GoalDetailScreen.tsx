@@ -25,7 +25,7 @@ export function GoalDetailScreen({ id }: { id: string }) {
   }
 
   return (
-    <div className="flex flex-col gap-5">
+    <div className="flex max-w-2xl flex-col gap-5">
       <a href={href.goals} className="text-sm text-stone-500">‹ Goals</a>
       <header className="flex items-start gap-3">
         <Marble color={goal.color} size={32} />

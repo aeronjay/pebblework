@@ -29,7 +29,7 @@ export function TodayScreen() {
           <a href={href.newGoal} className={`${ui.btn} ${ui.primary} mt-4 inline-block`}>Create a goal</a>
         </div>
       ) : (
-        <ul className="flex flex-col gap-2">
+        <ul className="grid gap-2 lg:grid-cols-2">
           {active.map((g) => (
             <li key={g.id}>
               {g.type === 'habit' && <HabitItem goal={g} today={today} />}

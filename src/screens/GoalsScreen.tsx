@@ -38,7 +38,7 @@ export function GoalsScreen() {
         return (
           <section key={type}>
             <h2 className="mb-2 text-sm font-semibold tracking-wide text-stone-500 uppercase">{label}</h2>
-            <ul className="flex flex-col gap-2">{list.map((g) => <GoalRow key={g.id} goal={g} />)}</ul>
+            <ul className="grid gap-2 lg:grid-cols-2">{list.map((g) => <GoalRow key={g.id} goal={g} />)}</ul>
           </section>
         )
       })}
@@ -46,7 +46,7 @@ export function GoalsScreen() {
       {finished.length > 0 && (
         <details>
           <summary className="cursor-pointer text-sm font-semibold tracking-wide text-stone-500 uppercase">Finished ({finished.length})</summary>
-          <ul className="mt-2 flex flex-col gap-2">{finished.map((g) => <GoalRow key={g.id} goal={g} />)}</ul>
+          <ul className="mt-2 grid gap-2 lg:grid-cols-2">{finished.map((g) => <GoalRow key={g.id} goal={g} />)}</ul>
         </details>
       )}
     </div>

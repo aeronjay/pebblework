@@ -1,4 +1,4 @@
-import { BottomNav } from './app/BottomNav'
+import { BottomNav, SideNav } from './app/Nav'
 import { useRoute, type Route } from './app/router'
 import { GoalDetailScreen } from './screens/GoalDetailScreen'
 import { GoalFormScreen } from './screens/GoalFormScreen'
@@ -26,8 +26,9 @@ function Screen({ route }: { route: Route }) {
 function App() {
   const route = useRoute()
   return (
-    <div className="flex min-h-full flex-col">
-      <main className="mx-auto w-full max-w-md flex-1 px-4 pt-6 pb-8">
+    <div className="flex min-h-full flex-col md:flex-row">
+      <SideNav route={route} />
+      <main className="mx-auto w-full max-w-md flex-1 px-4 pt-6 pb-8 md:max-w-4xl md:px-10 md:pt-10">
         <Screen route={route} />
       </main>
       <BottomNav route={route} />

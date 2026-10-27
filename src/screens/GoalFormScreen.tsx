@@ -62,7 +62,7 @@ function GoalForm({ initial }: { initial?: Goal }) {
   }
 
   return (
-    <form onSubmit={submit} className="flex flex-col gap-5">
+    <form onSubmit={submit} className="flex max-w-xl flex-col gap-5">
       <h1 className={ui.h1}>{editing ? 'Edit goal' : 'New goal'}</h1>
 
       {!editing && (
