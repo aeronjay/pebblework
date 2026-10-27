@@ -1,5 +1,6 @@
 import { format } from 'date-fns'
 import { href } from '../app/router'
+import { useToday } from '../app/useToday'
 import type { Goal } from '../db/types'
 import { HabitCheck, MilestoneCheck, NumericLog } from '../features/goals/GoalActions'
 import { useCheckIns, useGoals, useMilestones } from '../features/goals/hooks'
@@ -10,13 +11,14 @@ import { ui } from '../ui/styles'
 
 export function TodayScreen() {
   const goals = useGoals()
+  const today = useToday()
   if (!goals) return null
   const active = goals.filter((g) => g.status === 'active')
 
   return (
     <div className="flex flex-col gap-6">
       <header>
-        <p className="text-sm text-stone-500">{format(new Date(), 'EEEE, MMMM d')}</p>
+        <p className="text-sm text-stone-500">{format(today, 'EEEE, MMMM d')}</p>
         <h1 className={ui.h1}>Today</h1>
       </header>
 
@@ -30,7 +32,7 @@ export function TodayScreen() {
         <ul className="flex flex-col gap-2">
           {active.map((g) => (
             <li key={g.id}>
-              {g.type === 'habit' && <HabitItem goal={g} />}
+              {g.type === 'habit' && <HabitItem goal={g} today={today} />}
               {g.type === 'project' && <ProjectItem goal={g} />}
               {g.type === 'numeric' && <NumericItem goal={g} />}
             </li>
@@ -50,8 +52,8 @@ function Title({ goal, sub }: { goal: Goal; sub: string }) {
   )
 }
 
-function HabitItem({ goal }: { goal: Goal }) {
-  const { dueToday, doneToday, done, required } = habitProgress(goal, useCheckIns(goal.id))
+function HabitItem({ goal, today }: { goal: Goal; today: Date }) {
+  const { dueToday, doneToday, done, required } = habitProgress(goal, useCheckIns(goal.id), today)
   const weekly = goal.schedule?.kind === 'weekly'
   const sub = !dueToday && !doneToday ? `Rest day · ${describeSchedule(goal)}` : weekly ? `${done}/${required} this week` : describeSchedule(goal)
   return (
