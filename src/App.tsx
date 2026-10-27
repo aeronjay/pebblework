@@ -3,9 +3,12 @@ import { useRoute, type Route } from './app/router'
 import { GoalDetailScreen } from './screens/GoalDetailScreen'
 import { GoalFormScreen } from './screens/GoalFormScreen'
 import { GoalsScreen } from './screens/GoalsScreen'
+import { TodayScreen } from './screens/TodayScreen'
 
 function Screen({ route }: { route: Route }) {
   switch (route.name) {
+    case 'today':
+      return <TodayScreen />
     case 'goals':
       return <GoalsScreen />
     case 'goal':
