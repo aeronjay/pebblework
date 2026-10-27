@@ -4,6 +4,7 @@ import { useToday } from '../app/useToday'
 import type { Goal } from '../db/types'
 import { HabitCheck, MilestoneCheck, NumericLog } from '../features/goals/GoalActions'
 import { useCheckIns, useGoals, useMilestones } from '../features/goals/hooks'
+import { JarCard } from '../features/jar/JarCard'
 import { describeSchedule, formatAmount, habitProgress, numericTotal, projectProgress } from '../features/goals/progress'
 import { Marble } from '../ui/Marble'
 import { ProgressBar } from '../ui/ProgressBar'
@@ -16,29 +17,35 @@ export function TodayScreen() {
   const active = goals.filter((g) => g.status === 'active')
 
   return (
-    <div className="flex flex-col gap-6">
-      <header>
+    <div className="flex flex-col gap-6 md:grid md:grid-cols-[minmax(220px,300px)_1fr] md:grid-rows-[auto_1fr] md:items-start md:gap-x-10 md:gap-y-6">
+      <header className="md:col-start-2">
         <p className="text-sm text-stone-500">{format(today, 'EEEE, MMMM d')}</p>
         <h1 className={ui.h1}>Today</h1>
       </header>
 
-      {active.length === 0 ? (
-        <div className={`${ui.card} text-center`}>
-          <p className="font-medium">Nothing to do yet</p>
-          <p className="mt-1 text-sm text-stone-500">Every win drops a marble in your jar. Start with one small goal.</p>
-          <a href={href.newGoal} className={`${ui.btn} ${ui.primary} mt-4 inline-block`}>Create a goal</a>
-        </div>
-      ) : (
-        <ul className="grid gap-2 lg:grid-cols-2">
-          {active.map((g) => (
-            <li key={g.id}>
-              {g.type === 'habit' && <HabitItem goal={g} today={today} />}
-              {g.type === 'project' && <ProjectItem goal={g} />}
-              {g.type === 'numeric' && <NumericItem goal={g} />}
-            </li>
-          ))}
-        </ul>
-      )}
+      <aside className="mx-auto w-full max-w-[240px] md:sticky md:top-10 md:col-start-1 md:row-span-2 md:row-start-1 md:max-w-none">
+        <JarCard />
+      </aside>
+
+      <div className="md:col-start-2">
+        {active.length === 0 ? (
+          <div className={`${ui.card} text-center`}>
+            <p className="font-medium">Nothing to do yet</p>
+            <p className="mt-1 text-sm text-stone-500">Every win drops a marble in your jar. Start with one small goal.</p>
+            <a href={href.newGoal} className={`${ui.btn} ${ui.primary} mt-4 inline-block`}>Create a goal</a>
+          </div>
+        ) : (
+          <ul className="grid gap-2 xl:grid-cols-2">
+            {active.map((g) => (
+              <li key={g.id}>
+                {g.type === 'habit' && <HabitItem goal={g} today={today} />}
+                {g.type === 'project' && <ProjectItem goal={g} />}
+                {g.type === 'numeric' && <NumericItem goal={g} />}
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
     </div>
   )
 }
