@@ -1,5 +1,8 @@
 import { db, newId, newMeta, type MarbleDB } from '../../db/db'
 import type { CheckIn, Goal, GoalStatus, Meta, Milestone } from '../../db/types'
+import { MARBLE_VALUES } from '../marbles/config'
+import { awardMarbles, revokeMarbles } from '../marbles/engine'
+import { numericTotal } from './progress'
 
 export type GoalInput = Omit<Goal, keyof Meta | 'id' | 'status'>
 export type GoalPatch = Partial<GoalInput> & { status?: GoalStatus }
@@ -18,7 +21,18 @@ export async function createGoal(input: GoalInput, milestones: string[] = [], da
 }
 
 export async function updateGoal(id: string, patch: GoalPatch, database: MarbleDB = db): Promise<void> {
-  await database.goals.update(id, { ...patch, ...touched() })
+  await database.transaction('rw', [database.goals, ...marbleTables(database)], async () => {
+    const goal = await database.goals.get(id)
+    if (!goal) return
+    await database.goals.update(id, { ...patch, ...touched() })
+    if (!patch.status || patch.status === goal.status) return
+    const sourceId = `complete:${id}`
+    if (patch.status === 'completed') {
+      await awardMarbles(database, { reason: 'goal_complete', count: MARBLE_VALUES.goal_complete, color: goal.color, goalId: id, sourceId })
+    } else if (goal.status === 'completed') {
+      await revokeMarbles(database, sourceId)
+    }
+  })
 }
 
 export function setGoalStatus(id: string, status: GoalStatus, database: MarbleDB = db): Promise<void> {
@@ -48,11 +62,24 @@ export async function renameMilestone(id: string, title: string, database: Marbl
 }
 
 export async function setMilestoneDone(id: string, done: boolean, database: MarbleDB = db): Promise<void> {
-  await database.milestones.update(id, { completedAt: done ? now() : undefined, ...touched() })
+  await database.transaction('rw', [database.milestones, database.goals, ...marbleTables(database)], async () => {
+    const m = await database.milestones.get(id)
+    if (!m || !!m.completedAt === done) return
+    await database.milestones.update(id, { completedAt: done ? now() : undefined, ...touched() })
+    const goal = await database.goals.get(m.goalId)
+    if (done && goal) {
+      await awardMarbles(database, { reason: 'milestone', count: MARBLE_VALUES.milestone, color: goal.color, goalId: goal.id, sourceId: id })
+    } else {
+      await revokeMarbles(database, id)
+    }
+  })
 }
 
 export async function deleteMilestone(id: string, database: MarbleDB = db): Promise<void> {
-  await database.milestones.update(id, { deletedAt: now(), ...touched() })
+  await database.transaction('rw', [database.milestones, ...marbleTables(database)], async () => {
+    await database.milestones.update(id, { deletedAt: now(), ...touched() })
+    await revokeMarbles(database, id)
+  })
 }
 
 export async function moveMilestone(id: string, direction: -1 | 1, database: MarbleDB = db): Promise<void> {
@@ -74,12 +101,32 @@ export async function checkIn(
   database: MarbleDB = db,
 ): Promise<string> {
   const id = newId()
-  await database.checkIns.add({ id, goalId, at: opts.at ?? now(), amount: opts.amount, ...newMeta() })
+  await database.transaction('rw', [database.checkIns, database.goals, ...marbleTables(database)], async () => {
+    const goal = await database.goals.get(goalId)
+    if (!goal) throw new Error(`Goal ${goalId} not found`)
+    const before = goal.type === 'numeric' ? numericTotal(await liveCheckIns(goalId, database)) : 0
+    await database.checkIns.add({ id, goalId, at: opts.at ?? now(), amount: opts.amount, ...newMeta() })
+    const award = { color: goal.color, goalId, sourceId: id }
+    if (goal.type === 'habit') {
+      await awardMarbles(database, { ...award, reason: 'checkin', count: MARBLE_VALUES.checkin })
+    } else if (goal.type === 'numeric' && goal.target) {
+      const count = chunksCrossed(before, before + (opts.amount ?? 0), goal.target.chunk) * MARBLE_VALUES.chunk
+      await awardMarbles(database, { ...award, reason: 'chunk', count })
+    }
+  })
   return id
 }
 
+export function chunksCrossed(before: number, after: number, chunk: number): number {
+  if (!(chunk > 0)) return 0
+  return Math.max(0, Math.floor(after / chunk) - Math.floor(before / chunk))
+}
+
 export async function undoCheckIn(id: string, database: MarbleDB = db): Promise<void> {
-  await database.checkIns.update(id, { deletedAt: now(), ...touched() })
+  await database.transaction('rw', [database.checkIns, ...marbleTables(database)], async () => {
+    await database.checkIns.update(id, { deletedAt: now(), ...touched() })
+    await revokeMarbles(database, id)
+  })
 }
 
 export async function liveGoals(database: MarbleDB = db): Promise<Goal[]> {
@@ -95,6 +142,10 @@ export async function liveMilestones(goalId: string, database: MarbleDB = db): P
 export async function liveCheckIns(goalId: string, database: MarbleDB = db): Promise<CheckIn[]> {
   const list = await database.checkIns.where('goalId').equals(goalId).filter((c) => !c.deletedAt).toArray()
   return list.sort((a, b) => b.at.localeCompare(a.at))
+}
+
+function marbleTables(database: MarbleDB) {
+  return [database.marbleEvents, database.jars, database.settings]
 }
 
 function touched() {
