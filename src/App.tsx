@@ -3,6 +3,7 @@ import { useRoute, type Route } from './app/router'
 import { GoalDetailScreen } from './screens/GoalDetailScreen'
 import { GoalFormScreen } from './screens/GoalFormScreen'
 import { GoalsScreen } from './screens/GoalsScreen'
+import { SettingsScreen } from './screens/SettingsScreen'
 import { TodayScreen } from './screens/TodayScreen'
 
 function Screen({ route }: { route: Route }) {
@@ -17,8 +18,8 @@ function Screen({ route }: { route: Route }) {
       return <GoalFormScreen />
     case 'editGoal':
       return <GoalFormScreen id={route.id} />
-    default:
-      return <p className="text-stone-500">Coming soon.</p>
+    case 'settings':
+      return <SettingsScreen />
   }
 }
 
