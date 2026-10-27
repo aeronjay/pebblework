@@ -1,19 +1,7 @@
-import 'fake-indexeddb/auto'
-import { afterEach, describe, expect, it } from 'vitest'
-import { DEFAULT_SETTINGS, MarbleDB, newId, newMeta } from './db'
+import { describe, expect, it } from 'vitest'
+import { freshDb } from '../test/db'
+import { DEFAULT_SETTINGS, newId, newMeta } from './db'
 import { BackupError, exportBackup, importBackup, parseBackup } from './backup'
-
-let n = 0
-const dbs: MarbleDB[] = []
-function freshDb() {
-  const d = new MarbleDB(`test-${n++}`)
-  dbs.push(d)
-  return d
-}
-
-afterEach(async () => {
-  await Promise.all(dbs.splice(0).map((d) => d.delete()))
-})
 
 describe('backup', () => {
   it('round-trips all data through JSON into another database', async () => {
