@@ -1,8 +1,13 @@
 import { BottomNav } from './app/BottomNav'
 import { useRoute, type Route } from './app/router'
+import { GoalFormScreen } from './screens/GoalFormScreen'
 
 function Screen({ route }: { route: Route }) {
   switch (route.name) {
+    case 'newGoal':
+      return <GoalFormScreen />
+    case 'editGoal':
+      return <GoalFormScreen id={route.id} />
     default:
       return <p className="text-stone-500">Coming soon.</p>
   }
