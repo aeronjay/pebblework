@@ -1,9 +1,15 @@
 import { BottomNav } from './app/BottomNav'
 import { useRoute, type Route } from './app/router'
+import { GoalDetailScreen } from './screens/GoalDetailScreen'
 import { GoalFormScreen } from './screens/GoalFormScreen'
+import { GoalsScreen } from './screens/GoalsScreen'
 
 function Screen({ route }: { route: Route }) {
   switch (route.name) {
+    case 'goals':
+      return <GoalsScreen />
+    case 'goal':
+      return <GoalDetailScreen id={route.id} />
     case 'newGoal':
       return <GoalFormScreen />
     case 'editGoal':

@@ -44,3 +44,7 @@ export function describeSchedule(goal: Goal): string {
   if (s.kind === 'weekly') return `${s.timesPerWeek}× per week`
   return s.days.map((d) => DAY_NAMES[d]).join(', ')
 }
+
+export function formatAmount(n: number): string {
+  return n.toLocaleString(undefined, { maximumFractionDigits: 2 })
+}
