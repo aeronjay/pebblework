@@ -9,6 +9,7 @@ import { FILTERS, filterProjects, sortProjects, type ProjectFilter } from '../fe
 import { dayKey } from '../features/quests/day'
 import { QuestSheet, type SheetTarget } from '../features/quests/components/QuestSheet'
 import { ToastProvider } from '../features/quests/components/Toast'
+import { ui } from '../ui/styles'
 
 export function ProjectsScreen() {
   return (
@@ -18,8 +19,7 @@ export function ProjectsScreen() {
   )
 }
 
-const primary =
-  'inline-flex items-center gap-2 rounded-control bg-ink py-2.5 pr-3 pl-3.5 text-[14px] font-semibold text-canvas shadow-card transition hover:opacity-90 active:scale-[.98] outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-canvas'
+const primary = ui.quest
 
 function Projects() {
   const todayKey = dayKey(useToday())
@@ -52,10 +52,10 @@ function Projects() {
     <div>
       <header className="mb-6 flex flex-wrap items-end justify-between gap-x-6 gap-y-4 md:mb-8">
         <div className="min-w-0">
-          <p className="text-[12px] font-semibold tracking-[0.12em] text-muted uppercase">
-            {all ? (all.length ? `${open} open · ${all.length - open} completed` : 'Boards') : ' '}
+          <p className="text-[15px] font-semibold text-muted">
+            {all ? (all.length ? `${open} open, ${all.length - open} completed` : 'Boards') : ' '}
           </p>
-          <h1 className="mt-1.5 font-display text-[34px] leading-[1.05] font-medium tracking-[-0.02em] text-ink [font-variation-settings:'opsz'_72] md:text-[40px]">
+          <h1 className="mt-1.5 font-display text-[34px] leading-[1.05] font-medium text-ink md:text-[40px]">
             Projects
           </h1>
           <p className="mt-2 max-w-[52ch] text-[14px] text-muted">Big quests, broken into stages. Every stage you finish earns a stone.</p>
@@ -63,7 +63,7 @@ function Projects() {
         <button type="button" onClick={create} aria-keyshortcuts="N" className={primary}>
           <Plus aria-hidden className="size-4" strokeWidth={2} />
           New project
-          <kbd className="ml-1 hidden rounded-[5px] border border-canvas/20 px-1.5 font-sans text-[11px] font-medium text-canvas/70 md:inline">N</kbd>
+          <kbd className={ui.questKbd}>N</kbd>
         </button>
       </header>
 

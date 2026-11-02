@@ -34,7 +34,7 @@ export function DayCell({ day, inMonth, focusable, lifting, index, onHover, onFo
       onPointerEnter={(e: PointerEvent<HTMLDivElement>) => onHover(day.key, e.currentTarget)}
       onFocus={(e: FocusEvent<HTMLDivElement>) => onFocusCell(day.key, e.currentTarget)}
       style={style}
-      className={`qc-cell group flex h-11 select-none items-center justify-center rounded-[11px] outline-none transition-[background,opacity,transform] duration-150 ease-out-soft focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring sm:h-12 ${cellClass(day, inMonth)} ${lifting ? 'qc-lift' : ''}`}
+      className={`qc-cell group flex h-11 select-none items-center justify-center rounded-[11px] outline-none transition-[background,opacity,transform] duration-150 ease-out-soft focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring sm:h-12 lg:h-9 ${cellClass(day, inMonth)} ${lifting ? 'qc-lift' : ''}`}
     >
       {/* Hover wash, kept separate so it composes with the tint. */}
       <span aria-hidden className="pointer-events-none absolute inset-0 rounded-[inherit] bg-ink opacity-0 transition-opacity duration-150 group-hover:opacity-[0.04]" />

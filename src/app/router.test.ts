@@ -5,11 +5,10 @@ describe('parseHash', () => {
   it.each([
     ['', { name: 'home' }],
     ['#/', { name: 'home' }],
-    ['#/today', { name: 'today' }],
-    ['#/goals', { name: 'goals' }],
-    ['#/goals/new', { name: 'newGoal' }],
-    ['#/goals/abc', { name: 'goal', id: 'abc' }],
-    ['#/goals/abc/edit', { name: 'editGoal', id: 'abc' }],
+    // Removed tabs: old links land on Home.
+    ['#/today', { name: 'home' }],
+    ['#/goals', { name: 'home' }],
+    ['#/goals/abc/edit', { name: 'home' }],
     ['#/settings', { name: 'settings' }],
     ['#/projects', { name: 'projects' }],
     ['#/quests/abc', { name: 'board', id: 'abc' }],

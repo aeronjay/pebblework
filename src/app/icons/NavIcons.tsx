@@ -82,30 +82,10 @@ export function ProjectsIcon({ active, className }: NavIconProps) {
   )
 }
 
-// Today: a sun rising over the horizon (it slides up when active).
-export function TodayIcon({ active, className }: NavIconProps) {
-  const clip = useId()
-  return (
-    <Svg className={className}>
-      <clipPath id={clip}>
-        <rect x="0" y="0" width="24" height="18" />
-      </clipPath>
-      <g clipPath={`url(#${clip})`}>
-        <Layer active={active} from="translateY(4px)">
-          <path d="M7 18a5 5 0 0 1 10 0z" fill={ACCENT} />
-        </Layer>
-      </g>
-      <path d="M7 18a5 5 0 0 1 10 0" />
-      <path d="M12 7.25v2.25M6.6 12.6l-1.6-1.6M17.4 12.6l1.6-1.6" />
-      <path d="M3 18h18M8.5 21h7" />
-    </Svg>
-  )
-}
-
 const FLAG = 'M5.5 4.6c2-1.15 4-1.15 6.25 0s4.25 1.15 6.75 0v8.6c-2.5 1.15-4.5 1.15-6.75 0s-4.25-1.15-6.25 0'
 
-// Goals: a waving flag on its pole (the cloth unfurls from the pole when active).
-export function GoalsIcon({ active, className }: NavIconProps) {
+// A waving flag on its pole (the cloth unfurls from the pole when active). Used in illustrations.
+export function FlagIcon({ active, className }: NavIconProps) {
   return (
     <Svg className={className}>
       <Layer active={active} from="scaleX(0.55)" origin="origin-left">

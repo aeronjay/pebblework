@@ -183,7 +183,7 @@ export function QuestCalendar() {
         {/* Header */}
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
-            <h2 id="qc-title" className="font-display text-[22px] leading-tight font-semibold tracking-tight text-ink" aria-live="polite">
+            <h2 id="qc-title" className="font-display text-[22px] leading-tight font-semibold text-ink" aria-live="polite">
               {format(month, 'MMMM')} <span className="font-normal text-muted">{format(month, 'yyyy')}</span>
             </h2>
             <p className="mt-0.5 h-4 text-[12px] text-faint tabular-nums">{summary || 'Quest log'}</p>

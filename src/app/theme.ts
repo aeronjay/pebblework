@@ -7,7 +7,7 @@ type ThemePref = Settings['theme']
 
 // Mirrored to localStorage so the inline script in index.html can set data-theme before first paint.
 const STORE = 'theme'
-const CANVAS = { light: '#f7f5f1', dark: '#0c0d10' }
+const CANVAS = { light: '#e9ecf7', dark: '#161a33' }
 
 const systemDark = () => window.matchMedia?.('(prefers-color-scheme: dark)').matches ?? false
 

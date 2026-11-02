@@ -9,6 +9,7 @@ import { QuestSheet, type SheetTarget } from '../features/quests/components/Ques
 import { SummaryChip } from '../features/quests/components/SummaryChip'
 import { ToastProvider } from '../features/quests/components/Toast'
 import { useQuestToday } from '../features/quests/hooks'
+import { ui } from '../ui/styles'
 
 export function HomeScreen() {
   return (
@@ -23,7 +24,7 @@ function Home() {
   const quests = useQuestToday()
   const [sheet, setSheet] = useState<SheetTarget | null>(null)
   const aside = useRef<HTMLElement>(null)
-  const stickyTop = useStickyTop(aside)
+  const stickyTop = useStickyTop(aside, 40)
 
   // "N" opens a new quest, unless the user is typing somewhere.
   useEffect(() => {
@@ -43,8 +44,8 @@ function Home() {
       <div className="min-w-0">
         <header className="mb-6 flex flex-wrap items-end justify-between gap-x-6 gap-y-4 md:mb-8">
           <div className="min-w-0">
-            <p className="text-[12px] font-semibold tracking-[0.12em] text-muted uppercase">{format(today, 'EEEE · MMMM d')}</p>
-            <h1 className="mt-1.5 font-display text-[34px] leading-[1.05] font-medium tracking-[-0.02em] text-ink [font-variation-settings:'opsz'_72] md:text-[40px]">
+            <p className="text-[15px] font-semibold text-muted">{format(today, 'EEEE, MMMM d')}</p>
+            <h1 className="mt-1.5 font-display text-[34px] leading-[1.05] font-medium text-ink md:text-[40px]">
               Today’s quests
             </h1>
             <div className="mt-3 h-[26px]">{quests && <SummaryChip today={quests} />}</div>
@@ -53,11 +54,11 @@ function Home() {
             type="button"
             onClick={() => setSheet({ mode: 'create', category: 'dq' })}
             aria-keyshortcuts="N"
-            className="group inline-flex items-center gap-2 rounded-control bg-ink py-2.5 pr-3 pl-3.5 text-[14px] font-semibold text-canvas shadow-card transition hover:opacity-90 active:scale-[.98] outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-canvas"
+            className={ui.quest}
           >
             <Plus aria-hidden className="size-4" strokeWidth={2} />
             New quest
-            <kbd className="ml-1 hidden rounded-[5px] border border-canvas/20 px-1.5 font-sans text-[11px] font-medium text-canvas/70 md:inline">N</kbd>
+            <kbd className={ui.questKbd}>N</kbd>
           </button>
         </header>
 
@@ -72,7 +73,14 @@ function Home() {
         )}
       </div>
 
-      <aside ref={aside} style={{ top: stickyTop }} aria-label="Calendar and jar" className="mt-6 flex min-w-0 flex-col gap-4 lg:sticky lg:mt-0">
+      {/* Wide screens: at least the viewport minus <main>'s padding (the jar grows into it), so the page only scrolls when
+          the quest list is taller, or the screen is too short for the calendar plus a minimum-size jar. */}
+      <aside
+        ref={aside}
+        style={{ top: stickyTop }}
+        aria-label="Calendar and jar"
+        className="mt-6 flex min-w-0 flex-col gap-4 lg:sticky lg:mt-0 lg:min-h-[calc(100dvh-5rem)]"
+      >
         <QuestCalendar />
         <QuestJar />
       </aside>

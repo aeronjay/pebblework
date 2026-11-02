@@ -330,13 +330,15 @@ export function QuestJar() {
 
   return (
     <MotionConfig reducedMotion="user">
-      <section aria-labelledby="quest-jar-title" className="scroll-mt-6 scroll-mb-24 rounded-card border border-line bg-surface p-5 shadow-card md:scroll-mb-6">
+      <section aria-labelledby="quest-jar-title" className="scroll-mt-6 scroll-mb-24 rounded-card border border-line bg-surface bg-[radial-gradient(120%_70%_at_50%_0%,var(--color-sq-soft),transparent_70%)] p-5 shadow-card md:scroll-mb-6 lg:flex lg:flex-1 lg:flex-col">
         <header className="flex items-center justify-between gap-3">
           <div>
             <h2 id="quest-jar-title" className="text-[15px] font-semibold tracking-tight text-ink">
               Reward Jar
             </h2>
-            <p className="text-xs text-faint">Stones from your claimed days</p>
+            <p className="min-h-4 text-xs text-muted" aria-live="polite">
+              {copy || 'Stones from your claimed days'}
+            </p>
           </div>
           <span
             className="inline-flex shrink-0 items-center gap-1.5 rounded-chip border border-line bg-sunken px-2.5 py-1 text-xs text-muted"
@@ -356,7 +358,15 @@ export function QuestJar() {
           </span>
         </header>
 
-        <div className="relative mx-auto mt-2 w-full max-w-[290px]">
+        {/* Wide screens: jar beside its stats, so nearly all the spare height goes to the jar. */}
+        <div className="lg:mt-3 lg:flex lg:flex-1 lg:gap-5">
+        {/* On wide screens the Home column is viewport-tall, so the jar takes whatever height is left (a size container)
+            and scales to fit it; on narrow screens it keeps its natural size. */}
+        <div className="mx-auto mt-2 w-full max-w-[290px] lg:mt-0 lg:flex lg:min-h-[100px] lg:max-w-none lg:min-w-0 lg:flex-1 lg:items-center lg:justify-center lg:[container-type:size]">
+        <div
+          className="relative w-full lg:w-[min(290px,100cqw,calc(100cqh*var(--jar-ratio)))]"
+          style={{ ['--jar-ratio' as string]: WORLD.width / WORLD.height }}
+        >
           {/* Soft spotlight so the glass has something to refract. */}
           <div
             aria-hidden
@@ -397,7 +407,7 @@ export function QuestJar() {
                 transition={{ type: 'spring', stiffness: 260, damping: 22, delay: 0.15 }}
               >
                 <div className="rounded-card border border-line bg-elevated/90 px-5 py-3 shadow-pop backdrop-blur-sm">
-                  <p className="font-display text-[28px] leading-tight font-semibold tracking-tight text-ink">Jar filled!</p>
+                  <p className="font-display text-[28px] leading-tight font-semibold text-ink">Jar filled!</p>
                   <p className="mt-0.5 inline-flex items-center gap-1.5 text-sm text-muted">
                     <Trophy size={14} strokeWidth={1.75} className="text-mq" aria-hidden />
                     <span>
@@ -409,9 +419,11 @@ export function QuestJar() {
             )}
           </AnimatePresence>
         </div>
+        </div>
 
-        <div className="mt-3 flex items-end justify-between gap-3">
-          <p className="font-display leading-none tracking-tight text-ink tabular-nums" aria-label={`${weight} of ${capacity}`}>
+        <div className="lg:flex lg:w-[200px] lg:shrink-0 lg:flex-col lg:justify-center">
+        <div className="mt-3 flex items-end justify-between gap-3 lg:mt-0">
+          <p className="font-display leading-none text-ink tabular-nums" aria-label={`${weight} of ${capacity}`}>
             <span className="text-[34px] font-semibold">{weight}</span>
             <span className="ml-1.5 text-lg text-faint">/ {capacity}</span>
           </p>
@@ -441,7 +453,7 @@ export function QuestJar() {
           {byCat.map(({ c, n }) => (
             <li
               key={c}
-              className={`inline-flex items-center gap-1.5 rounded-chip px-2.5 py-1 text-xs font-medium ${CHIP[c].chip}`}
+              className={`inline-flex items-center gap-1.5 rounded-chip px-2.5 py-1 text-xs font-bold lg:px-2 ${CHIP[c].chip}`}
               title={CATEGORY[c].label}
               aria-label={`${CATEGORY[c].label}: ${n}`}
             >
@@ -451,10 +463,8 @@ export function QuestJar() {
             </li>
           ))}
         </ul>
-
-        <p className="mt-3 min-h-5 text-sm text-muted" aria-live="polite">
-          {copy}
-        </p>
+        </div>
+        </div>
       </section>
 
       {tokens.length > 0 &&

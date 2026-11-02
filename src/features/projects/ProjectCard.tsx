@@ -41,7 +41,7 @@ export function ProjectCard({ project, todayKey }: { project: ProjectSummary; to
           <span className="grid size-8 shrink-0 place-items-center rounded-[10px] bg-surface shadow-card" style={{ color: meta.ink }}>
             <meta.Icon aria-hidden className="size-4" strokeWidth={1.75} />
           </span>
-          <span className="truncate text-[12px] font-semibold tracking-[0.06em] uppercase" style={{ color: meta.ink }}>
+          <span className="truncate text-[13px] font-bold" style={{ color: meta.ink }}>
             {meta.label}
           </span>
         </span>
@@ -59,7 +59,7 @@ export function ProjectCard({ project, todayKey }: { project: ProjectSummary; to
       </div>
 
       <h2
-        className={`relative mt-4 line-clamp-2 font-display text-[21px] leading-[1.2] font-medium tracking-[-0.01em] [font-variation-settings:'opsz'_36] ${complete ? 'text-muted' : 'text-ink'}`}
+        className={`relative mt-4 line-clamp-2 font-display text-[21px] leading-[1.2] font-medium ${complete ? 'text-muted' : 'text-ink'}`}
       >
         {quest.title}
       </h2>
@@ -93,7 +93,7 @@ export function ProjectCard({ project, todayKey }: { project: ProjectSummary; to
             </p>
           ) : nextCard ? (
             <p className="flex min-w-0 items-center gap-2 text-[13px]">
-              <span className="shrink-0 text-[11px] font-semibold tracking-[0.06em] text-faint uppercase">Next</span>
+              <span className="shrink-0 text-[12px] font-bold text-faint">Next</span>
               <span className="truncate font-medium text-ink">{nextCard.title}</span>
             </p>
           ) : (

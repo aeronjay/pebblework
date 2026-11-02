@@ -1,6 +1,6 @@
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
 import { useEffect, useRef, useState, type ComponentType, type FocusEvent, type PointerEvent, type ReactNode } from 'react'
-import { GoalsIcon, HomeIcon, LogoMark, ProjectsIcon, SettingsIcon, TodayIcon, type NavIconProps } from './icons/NavIcons'
+import { HomeIcon, LogoMark, ProjectsIcon, SettingsIcon, type NavIconProps } from './icons/NavIcons'
 import { href, type Route } from './router'
 
 interface Tab {
@@ -13,14 +13,12 @@ interface Tab {
 const TABS: Tab[] = [
   { label: 'Home', to: href.home, match: ['home'], Icon: HomeIcon },
   { label: 'Projects', to: href.projects, match: ['projects', 'board'], Icon: ProjectsIcon },
-  { label: 'Today', to: href.today, match: ['today'], Icon: TodayIcon },
-  { label: 'Goals', to: href.goals, match: ['goals', 'newGoal', 'goal', 'editGoal'], Icon: GoalsIcon },
   { label: 'Settings', to: href.settings, match: ['settings'], Icon: SettingsIcon },
 ]
 
 const focus = 'outline-none focus-visible:ring-2 focus-visible:ring-ring'
 
-// Bottom tab bar on phones. Five equal tabs fit down to 320px.
+// Bottom tab bar on phones.
 export function BottomNav({ route }: { route: Route }) {
   return (
     <nav
@@ -121,7 +119,7 @@ export function SideNav({ route }: { route: Route }) {
           <span className="grid size-10 shrink-0 place-items-center">
             <LogoMark className="size-[34px] drop-shadow-[0_1px_2px_rgb(0_0_0/0.12)]" />
           </span>
-          <Label expanded={expanded} className="font-display text-[17px] font-semibold tracking-tight text-ink [font-variation-settings:'opsz'_36]">
+          <Label expanded={expanded} className="font-display text-[17px] font-semibold text-ink">
             Marble Jar
           </Label>
         </a>

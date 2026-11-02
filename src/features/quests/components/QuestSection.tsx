@@ -215,7 +215,7 @@ function EmptyState({ category, onAdd }: { category: QuestCategory; onAdd: () =>
       >
         <meta.Icon aria-hidden className="size-5" strokeWidth={1.75} />
       </span>
-      <p className="mt-4 font-display text-[17px] font-medium tracking-tight text-ink">{copy.title}</p>
+      <p className="mt-4 font-display text-[17px] font-medium text-ink">{copy.title}</p>
       <p className="mt-1 max-w-[30ch] text-[13px] leading-relaxed text-muted">{copy.body}</p>
       <button
         type="button"

@@ -34,7 +34,7 @@ const FOCUSABLE = 'a[href],button:not([disabled]),input:not([disabled]),textarea
 
 const field =
   'w-full rounded-control border border-line-strong bg-surface px-3 py-2 text-[14px] text-ink outline-none transition placeholder:text-faint focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/30 disabled:cursor-not-allowed disabled:bg-sunken disabled:text-faint'
-const labelCls = 'mb-1.5 block text-[12px] font-semibold tracking-[0.04em] text-muted uppercase'
+const labelCls = 'mb-1.5 block text-[13px] font-bold text-muted'
 
 function Sheet({ target, todayKey, onClose }: { target: SheetTarget; todayKey: string; onClose: () => void }) {
   const reduce = useReducedMotion()
@@ -218,7 +218,7 @@ function Sheet({ target, todayKey, onClose }: { target: SheetTarget; todayKey: s
               placeholder={asProject ? 'Name the project' : 'What’s the quest?'}
               aria-label="Title"
               maxLength={140}
-              className="w-full border-0 bg-transparent px-0 py-1 font-display text-[24px] leading-tight font-medium tracking-tight text-ink outline-none placeholder:text-faint/70 focus-visible:outline-none"
+              className="w-full border-0 bg-transparent px-0 py-1 font-display text-[24px] leading-tight font-medium text-ink outline-none placeholder:text-faint/70 focus-visible:outline-none"
             />
 
             <div>

@@ -3,28 +3,14 @@ import { BottomNav, SideNav } from './app/Nav'
 import { useRoute, type Route } from './app/router'
 import { useThemeSync } from './app/theme'
 import { BoardScreen } from './screens/BoardScreen'
-import { GoalDetailScreen } from './screens/GoalDetailScreen'
-import { GoalFormScreen } from './screens/GoalFormScreen'
-import { GoalsScreen } from './screens/GoalsScreen'
 import { HomeScreen } from './screens/HomeScreen'
 import { ProjectsScreen } from './screens/ProjectsScreen'
 import { SettingsScreen } from './screens/SettingsScreen'
-import { TodayScreen } from './screens/TodayScreen'
 
 function Screen({ route }: { route: Route }) {
   switch (route.name) {
     case 'home':
       return <HomeScreen />
-    case 'today':
-      return <TodayScreen />
-    case 'goals':
-      return <GoalsScreen />
-    case 'goal':
-      return <GoalDetailScreen id={route.id} />
-    case 'newGoal':
-      return <GoalFormScreen />
-    case 'editGoal':
-      return <GoalFormScreen id={route.id} />
     case 'settings':
       return <SettingsScreen />
     case 'projects':

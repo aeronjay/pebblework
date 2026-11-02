@@ -30,7 +30,7 @@ export function CardDrawer(props: Props) {
   )
 }
 
-const label = 'flex items-center gap-1.5 text-[11.5px] font-semibold tracking-[0.05em] text-faint uppercase'
+const label = 'flex items-center gap-1.5 text-[13px] font-bold text-faint'
 
 function useIsDesktop() {
   const [desktop, setDesktop] = useState(() => window.matchMedia('(min-width: 768px)').matches)
@@ -263,7 +263,7 @@ function TitleEditor({ id, value, onSave }: { id: string; value: string; onSave:
           requestAnimationFrame(() => ref.current?.blur())
         }
       }}
-      className="-mx-2 block w-[calc(100%+1rem)] resize-none overflow-hidden rounded-[10px] bg-transparent px-2 py-1 font-display text-[22px] leading-[1.25] font-semibold tracking-[-0.01em] text-ink outline-none hover:bg-sunken/60 focus-visible:bg-surface focus-visible:ring-2 focus-visible:ring-ring/40"
+      className="-mx-2 block w-[calc(100%+1rem)] resize-none overflow-hidden rounded-[10px] bg-transparent px-2 py-1 font-display text-[22px] leading-[1.25] font-semibold text-ink outline-none hover:bg-sunken/60 focus-visible:bg-surface focus-visible:ring-2 focus-visible:ring-ring/40"
     />
   )
 }

@@ -36,7 +36,7 @@ export function BoardNotFound() {
         <span className="mx-auto grid size-14 place-items-center rounded-card border border-line bg-surface text-muted shadow-card">
           <Compass aria-hidden className="size-6" strokeWidth={1.5} />
         </span>
-        <h1 className="mt-5 font-display text-[24px] leading-tight font-semibold tracking-tight text-ink">This board has wandered off</h1>
+        <h1 className="mt-5 font-display text-[24px] leading-tight font-semibold text-ink">This board has wandered off</h1>
         <p className="mt-2 text-[14px] leading-relaxed text-muted">
           The project may have been deleted, or the link is out of date. Stones it earned are still safe in your jar.
         </p>

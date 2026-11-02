@@ -58,7 +58,7 @@ function Panel({ title, children, confirmLabel, tone = 'primary', onConfirm, onC
         transition={{ type: 'spring', bounce: 0.18, duration: 0.32 }}
         className="relative w-full max-w-[400px] rounded-card border border-line bg-elevated p-5 shadow-pop"
       >
-        <h2 id={titleId} className="font-display text-[19px] leading-snug font-semibold tracking-tight text-ink">
+        <h2 id={titleId} className="font-display text-[19px] leading-snug font-semibold text-ink">
           {title}
         </h2>
         {children && (
