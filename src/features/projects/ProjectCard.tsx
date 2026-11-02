@@ -51,7 +51,7 @@ export function ProjectCard({ project, todayKey }: { project: ProjectSummary; to
       </div>
 
       <h2
-        className={`relative mt-4 line-clamp-2 font-display text-[21px] leading-[1.2] font-medium ${complete ? 'text-muted' : 'text-ink'}`}
+        className={`relative mt-4 line-clamp-2 font-display text-[21px] leading-[1.2] font-normal ${complete ? 'text-muted' : 'text-ink'}`}
       >
         {quest.title}
       </h2>
@@ -68,7 +68,7 @@ export function ProjectCard({ project, todayKey }: { project: ProjectSummary; to
             {columns} columns
             {!complete && total > 0 && (
               <>
-                <span aria-hidden className="text-faint">·</span>
+                <span aria-hidden className="mx-0.5 h-3 w-px bg-line-strong" />
                 {left === 0 ? 'all stages done' : `${left} to go`}
               </>
             )}

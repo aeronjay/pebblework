@@ -62,22 +62,19 @@ export function QuestSection({ category, items, todayKey, claimed, open, onToggl
   const spring = reduce ? { duration: 0 } : { type: 'spring' as const, bounce: 0, duration: 0.42 }
 
   return (
-    <section className="rounded-card border border-line bg-surface shadow-card">
+    <section>
       <h2>
         <button
           type="button"
           aria-expanded={open}
           aria-controls={panelId}
           onClick={onToggle}
-          className="group/head flex w-full items-center gap-3.5 rounded-card px-4 py-3.5 text-left outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset sm:px-5"
+          className="group/head flex w-full items-center gap-3 rounded-control px-1 py-2 text-left outline-none focus-visible:ring-2 focus-visible:ring-ring"
         >
-          <meta.Icon aria-hidden className="size-9 shrink-0" />
+          <meta.Icon aria-hidden className="size-7 shrink-0" />
           <span className="min-w-0 flex-1">
-            <span className="flex items-baseline gap-2">
-              <span className="text-[15px] font-semibold tracking-tight text-ink">{meta.label}</span>
-              <span className="text-[12px] font-medium text-faint">{meta.short}</span>
-            </span>
-            <span className="mt-0.5 block text-[13px] leading-snug text-faint sm:truncate">{meta.blurb}</span>
+            <span className="block text-[16px] leading-tight font-semibold text-ink">{meta.label}</span>
+            <span className="mt-0.5 block text-[13px] leading-snug text-muted sm:truncate">{meta.blurb}</span>
           </span>
           <span className="flex shrink-0 items-center gap-2.5">
             {actionable.length > 0 ? (
@@ -117,7 +114,7 @@ export function QuestSection({ category, items, todayKey, claimed, open, onToggl
             transition={{ height: spring, opacity: reduce ? { duration: 0 } : { duration: 0.2 } }}
             className="overflow-hidden"
           >
-            <div className="border-t border-line px-1.5 pt-1.5 pb-2 sm:px-2">
+            <div className="mt-1 rounded-card border border-line bg-surface px-1.5 pt-1.5 pb-2 sm:px-2">
               {items.length === 0 ? (
                 <EmptyState category={category} onAdd={onAdd} />
               ) : (
@@ -206,7 +203,7 @@ function EmptyState({ category, onAdd }: { category: QuestCategory; onAdd: () =>
   return (
     <div className="flex flex-col items-center px-6 pt-7 pb-6 text-center">
       <meta.Icon aria-hidden className="size-12" />
-      <p className="mt-4 font-display text-[17px] font-medium text-ink">{copy.title}</p>
+      <p className="mt-4 font-display text-[17px] font-normal text-ink">{copy.title}</p>
       <p className="mt-1 max-w-[30ch] text-[13px] leading-relaxed text-muted">{copy.body}</p>
       <button
         type="button"

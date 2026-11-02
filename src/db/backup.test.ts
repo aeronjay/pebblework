@@ -34,7 +34,7 @@ describe('backup', () => {
     await source.stones.add({ id: 's1', jarId: 'j1', dayKey: '2026-11-01', category: 'dq', weight: 1, rarity: 'normal', at: meta.createdAt, ...meta })
 
     const backup = parseBackup(JSON.stringify(await exportBackup(source)))
-    expect(backup.schemaVersion).toBe(4)
+    expect(backup.schemaVersion).toBe(5)
     const target = freshDb()
     await importBackup(backup, target)
     expect(await target.quests.count()).toBe(1)
@@ -107,7 +107,36 @@ describe('backup', () => {
     expect((await claimAll(target, now, () => 0.5)).days).toEqual([])
   })
 
-  it('rejects files that are not Marble Jar backups', () => {
+  it('round-trips notes', async () => {
+    const source = freshDb()
+    const meta = newMeta()
+    await source.notes.add({ id: 'n1', title: 'Plan', body: 'Ship the board', pinned: true, questId: 'p1', ...meta })
+    await source.notes.add({ id: 'n2', title: 'Gone', body: '', deletedAt: meta.createdAt, ...meta })
+
+    const backup = parseBackup(JSON.stringify(await exportBackup(source)))
+    expect(backup.data.notes).toHaveLength(2)
+    const target = freshDb()
+    await importBackup(backup, target)
+    expect(await target.notes.get('n1')).toMatchObject({ title: 'Plan', pinned: true, questId: 'p1' })
+    expect((await target.notes.get('n2'))?.deletedAt).toBe(meta.createdAt)
+  })
+
+  it('imports v4 backups that predate notes and clears local notes', async () => {
+    const target = freshDb()
+    await target.notes.add({ id: 'stale', title: 'Stale', body: '', ...newMeta() })
+    const meta = newMeta()
+    const v4 = {
+      app: 'marble-jar',
+      schemaVersion: 4,
+      exportedAt: meta.createdAt,
+      data: { quests: [{ id: 'q1', category: 'dq', title: 'Stretch', order: 0, startDate: '2026-11-01', ...meta }], settings: [DEFAULT_SETTINGS] },
+    }
+    await importBackup(parseBackup(JSON.stringify(v4)), target)
+    expect(await target.quests.count()).toBe(1)
+    expect(await target.notes.count()).toBe(0)
+  })
+
+  it('rejects files that are not Pebblework backups', () => {
     expect(() => parseBackup('nope')).toThrow(BackupError)
     expect(() => parseBackup('{"app":"other"}')).toThrow(BackupError)
     expect(() => parseBackup('{"app":"marble-jar","schemaVersion":999,"data":{}}')).toThrow(/newer version/)

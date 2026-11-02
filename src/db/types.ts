@@ -213,3 +213,12 @@ export interface Stone extends Meta {
   rarity: Rarity
   at: string // ISO claim time, staggered 1ms per stone; order = (at, id) = drop order
 }
+
+// Free-form note. `questId` optionally links it to a project quest; the link survives the quest's deletion.
+export interface Note extends Meta {
+  id: string
+  title: string
+  body: string
+  pinned?: boolean
+  questId?: string
+}

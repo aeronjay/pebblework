@@ -1,4 +1,4 @@
-import { ArrowRight, StickyNote } from 'lucide-react'
+import { StickyNote } from 'lucide-react'
 import { motion } from 'motion/react'
 import { completeQuest, doItToday, uncompleteQuest } from '../repo'
 import type { QuestItem } from '../hooks'
@@ -36,6 +36,7 @@ export function QuestRow({ item, todayKey, claimed, onEdit, onMove, canMoveUp, c
   const { state, reason } = checkState(item, todayKey, claimed)
   const muted = state === 'missed' || state === 'locked' || state === 'doneFixed'
   const struck = item.done
+  const caption = describeQuest(item, todayKey)
 
   async function toggle() {
     if (item.done) {
@@ -68,7 +69,7 @@ export function QuestRow({ item, todayKey, claimed, onEdit, onMove, canMoveUp, c
           >
             {quest.title}
           </p>
-          <p className="mt-0.5 truncate text-[12.5px] leading-5 text-faint">{describeQuest(item, todayKey)}</p>
+          {caption && <p className="mt-0.5 truncate text-[13px] leading-5 text-muted">{caption}</p>}
           {quest.note && (
             <p className="mt-1 flex gap-1.5 text-[12.5px] leading-5 text-muted">
               <StickyNote aria-hidden className="mt-[3px] size-3 shrink-0 text-faint" strokeWidth={1.75} />
@@ -82,7 +83,6 @@ export function QuestRow({ item, todayKey, claimed, onEdit, onMove, canMoveUp, c
               className="mt-2 inline-flex items-center gap-1.5 rounded-chip border border-line-strong bg-surface px-2.5 py-1 text-xs font-medium text-ink shadow-card transition hover:bg-sunken outline-none focus-visible:ring-2 focus-visible:ring-ring active:scale-[.97]"
             >
               Do it today
-              <ArrowRight aria-hidden className="size-3.5" strokeWidth={1.75} />
             </button>
           )}
         </div>

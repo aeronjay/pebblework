@@ -178,15 +178,15 @@ export function QuestCalendar() {
   }
 
   return (
-    <section aria-labelledby="qc-title" className="rounded-card border border-line bg-surface p-4 shadow-card sm:p-5 lg:p-4">
-      <div className="mx-auto max-w-[480px]">
+    <section aria-labelledby="qc-title">
+      <div className="w-full">
         {/* Header */}
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
-            <h2 id="qc-title" className="font-display text-[22px] leading-tight font-semibold text-ink" aria-live="polite">
+            <h2 id="qc-title" className="text-[15px] leading-tight font-semibold text-ink" aria-live="polite">
               {format(month, 'MMMM')} <span className="font-normal text-muted">{format(month, 'yyyy')}</span>
             </h2>
-            <p className="mt-0.5 h-4 text-[12px] text-faint tabular-nums">{summary || 'Quest log'}</p>
+            <p className="mt-0.5 h-4 text-[12.5px] text-muted tabular-nums">{summary || 'Your days at a glance'}</p>
           </div>
           <div className="flex shrink-0 items-center gap-0.5">
             <AnimatePresence initial={false}>
@@ -215,10 +215,10 @@ export function QuestCalendar() {
         </div>
 
         {/* Grid */}
-        <div className="relative mt-4" onPointerLeave={() => setTip(null)}>
+        <div className="relative mt-3" onPointerLeave={() => setTip(null)}>
           <div role="presentation" className="mb-1.5 grid grid-cols-7 gap-1">
             {WEEKDAYS.map((w) => (
-              <abbr key={w.long} title={w.long} className="text-center text-[11px] font-medium tracking-wide text-faint no-underline">
+              <abbr key={w.long} title={w.long} className="text-center text-[11px] font-medium text-faint no-underline">
                 {w.short}
               </abbr>
             ))}
@@ -236,7 +236,7 @@ export function QuestCalendar() {
             initial={reduce ? { opacity: 0 } : { opacity: 0, x: dir * 12 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: reduce ? 0.12 : 0.24, ease: [0.22, 1, 0.36, 1] }}
-            className="flex flex-col gap-1"
+            className="flex flex-col gap-1 tall:gap-0.5"
           >
             {rows.map((row, r) => (
               <div key={row[0]?.day.key ?? r} role="row" className="grid grid-cols-7 gap-1">
@@ -262,9 +262,9 @@ export function QuestCalendar() {
         </div>
 
         {/* Footer */}
-        <div className="mt-4 border-t border-line pt-3">
-          <Legend />
-          <div className="mt-3">
+        <div className="mt-3">
+          <Legend hint="Claim finished days to drop their stones in the jar." />
+          <div className="mt-2.5">
             <ClaimButton ref={buttonRef} days={claimable.days.length} weight={claimable.weight} busy={busy} onClaim={claim} />
             <AnimatePresence>
               {message && (

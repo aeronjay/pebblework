@@ -11,6 +11,7 @@ describe('parseHash', () => {
     ['#/goals/abc/edit', { name: 'home' }],
     ['#/settings', { name: 'settings' }],
     ['#/projects', { name: 'projects' }],
+    ['#/notes', { name: 'notes' }],
     ['#/quests/abc', { name: 'board', id: 'abc' }],
     ['#/quests', { name: 'home' }],
     ['#/nope', { name: 'home' }],

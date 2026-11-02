@@ -165,7 +165,7 @@ function Drawer({ card, columns, doneColumnId, category, todayKey, onMove, onDel
 
         <div className="flex shrink-0 items-center gap-3 border-t border-line px-5 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
           <p className="min-w-0 flex-1 truncate text-[12px] text-faint">
-            Created {format(new Date(card.createdAt), 'MMM d')} · Edited {format(new Date(card.updatedAt), 'MMM d, h:mm a')}
+            Created {format(new Date(card.createdAt), 'MMM d')}, edited {format(new Date(card.updatedAt), 'MMM d, h:mm a')}
           </p>
           <button
             type="button"
@@ -263,7 +263,7 @@ function TitleEditor({ id, value, onSave }: { id: string; value: string; onSave:
           requestAnimationFrame(() => ref.current?.blur())
         }
       }}
-      className="-mx-2 block w-[calc(100%+1rem)] resize-none overflow-hidden rounded-[10px] bg-transparent px-2 py-1 font-display text-[22px] leading-[1.25] font-semibold text-ink outline-none hover:bg-sunken/60 focus-visible:bg-surface focus-visible:ring-2 focus-visible:ring-ring/40"
+      className="-mx-2 block w-[calc(100%+1rem)] resize-none overflow-hidden rounded-[10px] bg-transparent px-2 py-1 font-display text-[22px] leading-[1.25] font-normal text-ink outline-none hover:bg-sunken/60 focus-visible:bg-surface focus-visible:ring-2 focus-visible:ring-ring/40"
     />
   )
 }
@@ -343,7 +343,7 @@ function ReminderField({ id, value, todayKey, onChange }: { id: string; value?: 
           >
             <AlarmClock aria-hidden className="size-3.5 text-muted" strokeWidth={1.75} />
             <span id={`${id}-value`}>{format(parseISO(value), 'EEE, MMM d')}</span>
-            <span className="text-[12px] font-normal text-muted">· {describeDue(value, todayKey).label.replace(/^Due /, '')}</span>
+            <span className="text-[12px] font-normal text-muted">{describeDue(value, todayKey).label.replace(/^Due /, '')}</span>
           </button>
           <button
             type="button"

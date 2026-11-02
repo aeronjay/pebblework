@@ -2,9 +2,11 @@ import type Dexie from 'dexie'
 import { db, markClaimedFromDayClaims, type MarbleDB } from './db'
 import type { DayClaim, QuestCompletion } from './types'
 
+// Internal format id from before the Pebblework rename. Kept so existing backups keep importing; never shown to users.
 export const BACKUP_APP = 'marble-jar'
-// v1 (no quest tables), v2 (no board tables) and v3 (day-level claims) backups still import
-export const BACKUP_SCHEMA_VERSION = 4
+// v1 (no quest tables), v2 (no board tables), v3 (day-level claims) and v4 (no notes) backups still import;
+// a table missing from the backup imports as empty.
+export const BACKUP_SCHEMA_VERSION = 5
 
 const TABLES = [
   'goals',
@@ -22,6 +24,7 @@ const TABLES = [
   'stones',
   'boardColumns',
   'cards',
+  'notes',
 ] as const
 
 type TableName = (typeof TABLES)[number]
@@ -56,7 +59,7 @@ export function parseBackup(json: string): Backup {
   }
   if (typeof raw !== 'object' || raw === null) throw new BackupError('Backup is empty.')
   const backup = raw as Partial<Backup>
-  if (backup.app !== BACKUP_APP) throw new BackupError('This is not a Marble Jar backup.')
+  if (backup.app !== BACKUP_APP) throw new BackupError('This is not a Pebblework backup.')
   if (typeof backup.schemaVersion !== 'number' || backup.schemaVersion > BACKUP_SCHEMA_VERSION) {
     throw new BackupError('This backup was made by a newer version of the app.')
   }
@@ -91,7 +94,7 @@ export async function downloadBackup(database: MarbleDB = db): Promise<void> {
   const url = URL.createObjectURL(blob)
   const a = document.createElement('a')
   a.href = url
-  a.download = `marble-jar-backup-${backup.exportedAt.slice(0, 10)}.json`
+  a.download = `pebblework-backup-${backup.exportedAt.slice(0, 10)}.json`
   a.click()
   URL.revokeObjectURL(url)
   const settings = (await database.settings.get('settings'))

@@ -1,6 +1,7 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
-import '@fontsource-variable/geologica'
+import '@fontsource-variable/familjen-grotesk'
+import '@fontsource/young-serif'
 import './index.css'
 import App from './App.tsx'
 import { requestPersistentStorage } from './db/db'

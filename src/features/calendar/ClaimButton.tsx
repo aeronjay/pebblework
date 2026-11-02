@@ -20,7 +20,7 @@ export function ClaimButton({ days, weight, busy, onClaim, ref }: Props) {
         ref={ref}
         type="button"
         disabled
-        className="flex h-11 w-full cursor-default items-center justify-between rounded-control border border-line bg-sunken/60 px-4 text-[13px] text-muted"
+        className="flex h-11 w-full cursor-default items-center justify-between rounded-control border border-line px-4 text-[13px] text-muted"
       >
         <span className="flex items-center gap-2 font-medium whitespace-nowrap">
           <Gem size={15} strokeWidth={1.75} className="text-faint" />
@@ -41,7 +41,7 @@ export function ClaimButton({ days, weight, busy, onClaim, ref }: Props) {
       disabled={busy}
       className="qc-claim group block w-full rounded-control transition-opacity duration-150 hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring active:translate-y-0 active:scale-[.985] disabled:cursor-progress"
     >
-      <span className="qc-claim-core flex h-11 items-center justify-between rounded-control bg-ink px-4 text-[14px] font-medium text-canvas">
+      <span className="qc-claim-core flex h-11 items-center justify-between rounded-control bg-blaze px-4 text-[14px] font-semibold text-on-blaze">
         <span className="flex items-center gap-2">
           {busy ? (
             <LoaderCircle size={16} strokeWidth={2} className="qc-spin" />
@@ -51,7 +51,7 @@ export function ClaimButton({ days, weight, busy, onClaim, ref }: Props) {
           {busy ? 'Claiming…' : copy.label}
         </span>
         {!busy && (
-          <span className="inline-flex items-center gap-1 rounded-chip bg-canvas/12 px-2 py-0.5 text-[12px] font-medium tabular-nums">
+          <span className="inline-flex items-center gap-1 rounded-chip bg-on-blaze/15 px-2 py-0.5 text-[12px] font-medium tabular-nums">
             <Gem size={12} strokeWidth={1.75} />
             {copy.detail}
           </span>

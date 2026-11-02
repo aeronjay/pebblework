@@ -29,7 +29,8 @@ export function describeQuest(item: QuestItem, todayKey: string): string {
   const parts: string[] = []
   switch (item.when) {
     case 'today':
-      parts.push(q.category === 'dq' ? 'Every day' : 'Due today')
+      // A daily quest due today needs no caption: its section already says it's daily.
+      if (q.category !== 'dq') parts.push('Due today')
       break
     case 'upcoming':
       parts.push(q.category === 'dq' ? `Starts ${formatDay(q.startDate, todayKey)}` : `Due ${formatDay(q.dueDate!, todayKey)}`)
@@ -38,14 +39,14 @@ export function describeQuest(item: QuestItem, todayKey: string): string {
       parts.push(item.done ? 'Done today' : 'Anytime')
       break
     case 'missed':
-      parts.push(q.redoneAs ? `Moved to today · was due ${formatDay(q.dueDate!, todayKey)}` : `Missed · was due ${formatDay(q.dueDate!, todayKey)}`)
+      parts.push(q.redoneAs ? `Moved to today, was due ${formatDay(q.dueDate!, todayKey)}` : `Missed, was due ${formatDay(q.dueDate!, todayKey)}`)
       break
     case 'past':
-      parts.push(q.dueDate ? `Done · ${formatDay(q.dueDate, todayKey)}` : 'Done earlier')
+      parts.push(q.dueDate ? `Done ${formatDay(q.dueDate, todayKey)}` : 'Done earlier')
       break
   }
   if (time && item.when !== 'past' && item.when !== 'missed') parts.push(time)
-  return parts.join(' · ')
+  return parts.join(', ')
 }
 
 // Projects never sit on a day: their deadline is display-only, and "done" means completeProject ran.
@@ -55,6 +56,6 @@ export function describeProject(q: Quest, todayKey: string): string {
     return doneKey === todayKey ? 'Completed today' : `Completed ${formatDay(doneKey, todayKey)}`
   }
   if (!q.dueDate) return 'No deadline'
-  if (q.dueDate < todayKey) return `Past deadline · ${formatDay(q.dueDate, todayKey)}`
+  if (q.dueDate < todayKey) return `Deadline passed ${formatDay(q.dueDate, todayKey)}`
   return `Deadline ${formatDay(q.dueDate, todayKey)}`
 }

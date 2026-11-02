@@ -455,3 +455,38 @@ export async function loadProjects(database: MarbleDB = db): Promise<ProjectSumm
     return [{ quest: b.quest, ...b.progress, columns: b.columns.length, lastActivity, nextCard }]
   })
 }
+
+export interface InProgressItem {
+  card: Card
+  column: BoardColumn
+  quest: Quest
+  subtasks: { done: number; total: number }
+}
+
+// Cards being worked on across every open project: live cards on a live, not-completed project, in a live column
+// that is neither the board's first column (the backlog) nor its done column. A 2-column board has none.
+// Sorted: cards with a due date first (soonest first), then most recently updated.
+export async function loadInProgress(database: MarbleDB = db): Promise<InProgressItem[]> {
+  const quests = await database.quests.filter((q) => !q.deletedAt && !q.projectDoneAt && isProject(q)).toArray()
+  const perQuest = await Promise.all(
+    quests.map(async (quest) => {
+      const columns = await liveColumns(quest.id, database)
+      const middle = new Map(columns.slice(1, -1).map((c) => [c.id, c]))
+      if (!middle.size) return []
+      const cards = await database.cards.where('questId').equals(quest.id).filter((c) => !c.deletedAt && middle.has(c.columnId)).toArray()
+      return cards.map((card) => ({
+        card,
+        column: middle.get(card.columnId)!,
+        quest,
+        subtasks: { done: card.subtasks.filter((s) => s.done).length, total: card.subtasks.length },
+      }))
+    }),
+  )
+  return perQuest.flat().sort((a, b) => {
+    const da = a.card.dueDate
+    const dbb = b.card.dueDate
+    if (da && dbb && da !== dbb) return da.localeCompare(dbb)
+    if (!!da !== !!dbb) return da ? -1 : 1
+    return b.card.updatedAt.localeCompare(a.card.updatedAt) || a.card.id.localeCompare(b.card.id)
+  })
+}

@@ -56,21 +56,24 @@ export function SettingsIcon(props: NavIconProps) {
   )
 }
 
-// App mark: the jar outline with three stones settled in it, one per quest type. No tile; it sits on the page.
+// A note: a page with a folded corner and two lines of writing.
+export function NotesIcon(props: NavIconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M6.5 3.8h8.2l3.8 3.8v11.6a1.8 1.8 0 0 1-1.8 1.8H6.5a1.8 1.8 0 0 1-1.8-1.8V5.6a1.8 1.8 0 0 1 1.8-1.8z" />
+      <path d="M14.5 3.9v2.6c0 .7.5 1.2 1.2 1.2h2.7" />
+      <path d="M8 12.2h7.5M8 15.8h5" />
+    </Svg>
+  )
+}
+
+// App mark: a small cairn, three pebbles stacked; the top one is the trail blaze. No tile; it sits on the page.
 export function LogoMark({ className }: { className?: string }) {
   return (
     <svg aria-hidden viewBox="0 0 32 32" className={className}>
-      <path
-        d="M12 4.5h8M12.6 4.5v3c0 .7-.4 1.3-1 1.7C9.3 10.7 8 12.8 8 15.6v8A4 4 0 0 0 12 27.6h8a4 4 0 0 0 4-4v-8c0-2.8-1.3-4.9-3.6-6.4-.6-.4-1-1-1-1.7v-3"
-        fill="none"
-        stroke="var(--color-ink)"
-        strokeWidth="1.8"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-      <path d="M10.6 23.4c0-1.5 1.5-2.5 3.4-2.5 1.8 0 3 .9 3 2.2 0 1.4-1.4 2.3-3.3 2.3-1.8 0-3.1-.8-3.1-2z" fill="var(--color-mq)" />
-      <path d="M16.8 23.9c-.1-1.1.9-1.9 2.4-2 1.4 0 2.3.6 2.3 1.6s-1 1.8-2.4 1.8c-1.3.1-2.2-.5-2.3-1.4z" fill="var(--color-sq)" />
-      <path d="M13.4 19.3c0-1.1 1.1-1.9 2.6-1.9s2.5.7 2.5 1.8-1.1 1.8-2.6 1.8-2.5-.7-2.5-1.7z" fill="var(--color-dq)" />
+      <path d="M5 23.6c0-2.3 4.8-3.9 11.2-3.9 6.3 0 10.8 1.5 10.8 3.8 0 2.4-4.6 3.9-11 3.9C9.6 27.4 5 25.9 5 23.6z" fill="var(--color-ink)" />
+      <path d="M8.6 15.9c0-1.9 3.2-3.1 7.6-3.1 4.3 0 7.3 1.2 7.3 3 0 1.9-3.1 3.1-7.4 3.1-4.4 0-7.5-1.1-7.5-3z" fill="var(--color-muted)" />
+      <path d="M11.8 9.1c0-1.6 1.9-2.8 4.4-2.8 2.4 0 4.2 1.1 4.2 2.7 0 1.6-1.9 2.6-4.3 2.6-2.5 0-4.3-1-4.3-2.5z" fill="var(--color-blaze)" />
     </svg>
   )
 }

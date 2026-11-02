@@ -56,8 +56,8 @@ export function describeDeadline(key: string, todayKey: string): string {
   const date = format(d, d.getFullYear() === parseDayKey(todayKey).getFullYear() ? 'MMM d' : 'MMM d, yyyy')
   if (diff === 0) return 'Deadline today'
   if (diff === 1) return 'Deadline tomorrow'
-  if (diff < 0) return `Deadline passed · ${date}`
-  return `${date} · in ${diff} days`
+  if (diff < 0) return `Deadline passed ${date}`
+  return `${date}, in ${diff} days`
 }
 
 export function subtaskProgress(subtasks: Subtask[]): { done: number; total: number } {

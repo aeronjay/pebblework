@@ -42,7 +42,7 @@ export function QuestLists({ today, onAdd, onEdit }: Props) {
   }
 
   return (
-    <div className="flex flex-col gap-3">
+    <div className="flex flex-col gap-6">
       {CATEGORY_ORDER.map((c) => (
         <QuestSection
           key={c}

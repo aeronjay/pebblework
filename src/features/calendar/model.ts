@@ -143,5 +143,5 @@ export function monthSummary(days: Pick<MonthDay, 'status' | 'inMonth'>[]): stri
   const parts: string[] = []
   if (claimed) parts.push(`${claimed} claimed`)
   if (ready) parts.push(`${ready} ready`)
-  return parts.join(' · ')
+  return parts.join(', ')
 }

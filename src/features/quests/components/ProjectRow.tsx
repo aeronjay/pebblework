@@ -73,7 +73,7 @@ export function ProjectRow({ item, summary, todayKey, onEdit, onMove, canMoveUp,
               {(done || quest.dueDate) && <span className={late ? 'text-danger-ink' : ''}>{deadline}</span>}
               {!done && summary?.nextCard && (
                 <>
-                  {quest.dueDate && <span aria-hidden> · </span>}
+                  {quest.dueDate && <span aria-hidden>, </span>}
                   Next: {summary.nextCard.title}
                 </>
               )}

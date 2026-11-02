@@ -55,7 +55,7 @@ function Projects() {
           <p className="text-[15px] font-semibold text-muted">
             {all ? (all.length ? `${open} open, ${all.length - open} completed` : 'Boards') : ' '}
           </p>
-          <h1 className="mt-1.5 font-display text-[34px] leading-[1.05] font-medium tracking-[-0.025em] text-ink md:text-[42px]">
+          <h1 className="mt-1.5 font-display text-[34px] leading-[1.05] font-normal tracking-[-0.025em] text-ink md:text-[42px]">
             Projects
           </h1>
           <p className="mt-2 max-w-[52ch] text-[14px] text-muted">Big quests, broken into stages. Every stage you finish earns a stone.</p>
@@ -101,7 +101,7 @@ function Projects() {
 
           {shown.length === 0 ? (
             <div className="rounded-card border border-dashed border-line-strong px-6 py-12 text-center">
-              <p className="font-display text-[18px] font-medium text-ink">No {filter === 'mq' ? 'main' : 'side'} projects yet</p>
+              <p className="font-display text-[18px] font-normal text-ink">No {filter === 'mq' ? 'main' : 'side'} projects yet</p>
               <p className="mt-1 text-[13px] text-muted">Projects you start here get their own board.</p>
               <button type="button" onClick={create} className={`${primary} mt-5`}>
                 <Plus aria-hidden className="size-4" strokeWidth={2} />

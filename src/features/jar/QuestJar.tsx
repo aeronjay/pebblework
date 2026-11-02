@@ -330,22 +330,16 @@ export function QuestJar() {
 
   return (
     <MotionConfig reducedMotion="user">
-      <section aria-labelledby="quest-jar-title" className="scroll-mt-6 scroll-mb-24 rounded-card border border-line bg-surface p-5 shadow-card md:scroll-mb-6 lg:p-4 lg:flex lg:flex-1 lg:flex-col">
+      <section aria-labelledby="quest-jar-title" className="flex scroll-mt-6 scroll-mb-24 flex-col md:scroll-mb-6 lg:min-h-0 lg:flex-1">
         <header className="flex items-center justify-between gap-3">
-          <div>
-            <h2 id="quest-jar-title" className="text-[15px] font-semibold tracking-tight text-ink">
-              Reward Jar
-            </h2>
-            <p className="min-h-4 text-xs text-muted" aria-live="polite">
-              {copy || 'Stones from your claimed days'}
-            </p>
-          </div>
+          <h2 id="quest-jar-title" className="text-[14px] font-semibold text-muted">
+            Your jar
+          </h2>
           <span
-            className="inline-flex shrink-0 items-center gap-1.5 rounded-chip border border-line bg-sunken px-2.5 py-1 text-xs text-muted"
+            className="inline-flex shrink-0 items-center gap-1.5 rounded-chip bg-white/[0.06] px-2.5 py-1 text-[12.5px] text-muted"
             aria-label={`Jars filled: ${s?.jarsFilled ?? 0}`}
           >
             <Trophy size={13} strokeWidth={1.75} className="text-mq" aria-hidden />
-            Jars filled
             <motion.span
               key={s?.jarsFilled ?? 0}
               initial={{ scale: 1.6, opacity: 0 }}
@@ -355,23 +349,20 @@ export function QuestJar() {
             >
               {s?.jarsFilled ?? 0}
             </motion.span>
+            {(s?.jarsFilled ?? 0) === 1 ? 'jar filled' : 'jars filled'}
           </span>
         </header>
 
-        {/* Wide screens: jar beside its stats, so nearly all the spare height goes to the jar. */}
-        <div className="lg:mt-3 lg:flex lg:flex-1 lg:gap-5">
-        {/* On wide screens the Home column is viewport-tall, so the jar takes whatever height is left (a size container)
-            and scales to fit it; on narrow screens it keeps its natural size. */}
-        <div className="mx-auto mt-2 w-full max-w-[290px] lg:mt-0 lg:flex lg:min-h-[100px] lg:max-w-none lg:min-w-0 lg:flex-1 lg:items-center lg:justify-center lg:[container-type:size]">
-        <div
-          className="relative w-full lg:w-[min(290px,100cqw,calc(100cqh*var(--jar-ratio)))]"
-          style={{ ['--jar-ratio' as string]: WORLD.width / WORLD.height }}
-        >
+        {/* Big screens: the jar beside its count, in a size container that takes the stage's spare height (fixed when
+            the page scrolls). Small screens: stacked, the jar capped to ~half the viewport so today's quests stay close. */}
+        <div className="mt-3 flex flex-col items-center gap-5 lg:h-[380px] lg:flex-row lg:items-stretch lg:justify-center lg:gap-8 lg:[container-type:size] tall:h-auto tall:min-h-0 tall:flex-1">
+        <div className="flex w-full max-w-[min(300px,calc(46svh*var(--jar-ratio)))] items-center justify-center lg:w-auto lg:max-w-none lg:shrink-0" style={{ ['--jar-ratio' as string]: WORLD.width / WORLD.height }}>
+        <div className="relative w-full lg:w-[min(420px,calc(100cqw-196px),calc(100cqh*var(--jar-ratio)))]">
           {/* Soft spotlight so the glass has something to refract. */}
           <div
             aria-hidden
-            className="pointer-events-none absolute inset-x-[-12%] top-[6%] bottom-[-2%] rounded-full opacity-80"
-            style={{ background: 'radial-gradient(closest-side, var(--color-sunken), transparent)' }}
+            className="pointer-events-none absolute inset-x-[-14%] top-[2%] bottom-[-4%] rounded-full"
+            style={{ background: 'radial-gradient(closest-side, var(--stage-glow), transparent)' }}
           />
           <AnimatePresence>
             {celebration && (
@@ -395,8 +386,6 @@ export function QuestJar() {
             className="relative block w-full cursor-pointer select-none"
             style={{ aspectRatio: `${WORLD.width} / ${WORLD.height}` }}
           />
-          {/* The sill the jar stands on: a ledge drawn at the glass's base (6% of the width up from the canvas bottom). */}
-          <div aria-hidden className="relative -mx-[4%] -mt-[5.5%] h-[2px] rounded-full bg-line-strong" />
           <AnimatePresence>
             {celebration && (
               <motion.div
@@ -409,7 +398,7 @@ export function QuestJar() {
                 transition={{ type: 'spring', stiffness: 260, damping: 22, delay: 0.15 }}
               >
                 <div className="rounded-card border border-line bg-elevated/90 px-5 py-3 shadow-pop backdrop-blur-sm">
-                  <p className="font-display text-[28px] leading-tight font-semibold text-ink">Jar filled!</p>
+                  <p className="font-display text-[28px] leading-tight font-normal text-ink">Jar filled!</p>
                   <p className="mt-0.5 inline-flex items-center gap-1.5 text-sm text-muted">
                     <Trophy size={14} strokeWidth={1.75} className="text-mq" aria-hidden />
                     <span>
@@ -423,48 +412,41 @@ export function QuestJar() {
         </div>
         </div>
 
-        <div className="lg:flex lg:w-[212px] lg:shrink-0 lg:flex-col lg:justify-center">
-        <div className="mt-3 flex items-end justify-between gap-3 lg:mt-0">
-          <p className="font-display leading-none text-ink tabular-nums" aria-label={`${weight} of ${capacity}`}>
-            <span className="text-[34px] font-semibold">{weight}</span>
-            <span className="ml-1.5 text-lg text-faint">/ {capacity}</span>
+        <div className="w-full lg:flex lg:w-[164px] lg:shrink-0 lg:flex-col lg:justify-end lg:pb-[8%]">
+          <p className="flex items-baseline gap-2 text-ink tabular-nums" aria-label={`${weight} of ${capacity}`}>
+            <span className="font-display text-[60px] leading-[0.9] tracking-[-0.03em]">{weight}</span>
+            <span className="text-[15px] text-muted">of {capacity}</span>
           </p>
-          <p className="pb-0.5 text-sm font-medium text-muted tabular-nums">{Math.round(fill * 100)}%</p>
-        </div>
-
-        <div
-          className="mt-2.5 flex h-1.5 w-full gap-px overflow-hidden rounded-chip bg-sunken"
-          role="progressbar"
-          aria-label="Jar fill"
-          aria-valuemin={0}
-          aria-valuemax={capacity}
-          aria-valuenow={weight}
-        >
-          {byCat.map(({ c, n }) =>
-            n ? (
-              <div
-                key={c}
-                className={`${CHIP[c].bar} h-full transition-[width] duration-500 ease-out-soft first:rounded-l-chip last:rounded-r-chip`}
-                style={{ width: `${(Math.min(n, capacity) / capacity) * 100}%` }}
-              />
-            ) : null,
-          )}
-        </div>
-
-        <ul className="mt-3 flex flex-wrap gap-1.5" aria-label="Stones by category">
-          {byCat.map(({ c, n }) => (
-            <li
-              key={c}
-              className={`inline-flex items-center gap-1.5 rounded-chip px-2.5 py-1 text-xs font-medium lg:px-2 ${CHIP[c].chip}`}
-              title={CATEGORY[c].label}
-              aria-label={`${CATEGORY[c].label}: ${n}`}
-            >
-              <span className={`size-1.5 rounded-full ${CHIP[c].dot}`} aria-hidden />
-              {CATEGORY[c].short}
-              <span className="tabular-nums">{n}</span>
-            </li>
-          ))}
-        </ul>
+          <p className="mt-2 min-h-10 text-[14px] leading-snug text-muted" aria-live="polite">
+            {copy || 'Stones from your claimed days'}
+          </p>
+          <div
+            className="mt-3 flex h-1.5 w-full gap-px overflow-hidden rounded-chip bg-white/[0.08]"
+            role="progressbar"
+            aria-label="Jar fill"
+            aria-valuemin={0}
+            aria-valuemax={capacity}
+            aria-valuenow={weight}
+          >
+            {byCat.map(({ c, n }) =>
+              n ? (
+                <div
+                  key={c}
+                  className={`${CHIP[c].bar} h-full transition-[width] duration-500 ease-out-soft first:rounded-l-chip last:rounded-r-chip`}
+                  style={{ width: `${(Math.min(n, capacity) / capacity) * 100}%` }}
+                />
+              ) : null,
+            )}
+          </div>
+          <ul className="mt-3 flex flex-wrap gap-x-3 gap-y-1.5" aria-label="Stones by category">
+            {byCat.map(({ c, n }) => (
+              <li key={c} className="inline-flex items-center gap-1.5 text-[13px] text-muted" title={CATEGORY[c].label} aria-label={`${CATEGORY[c].label}: ${n}`}>
+                <span className={`size-2 rounded-full ${CHIP[c].dot}`} aria-hidden />
+                {CATEGORY[c].label.replace(' Quest', '')}
+                <span className="font-semibold text-ink tabular-nums">{n}</span>
+              </li>
+            ))}
+          </ul>
         </div>
         </div>
       </section>

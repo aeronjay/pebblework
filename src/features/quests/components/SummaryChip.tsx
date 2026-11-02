@@ -18,7 +18,7 @@ export function SummaryChip({ today }: { today: QuestToday }) {
     return (
       <span className={`${base} border-transparent bg-mq-soft text-mq-ink`}>
         <ProgressRing value={1} size={14} color="currentColor" />
-        All {done} done · ready to claim
+        All {done} done, ready to claim
       </span>
     )
   if (!assigned)

@@ -18,7 +18,7 @@ export function ProjectsEmpty({ onCreate }: { onCreate: () => void }) {
   return (
     <div className="flex flex-col items-center rounded-card border border-dashed border-line-strong px-6 pt-12 pb-12 text-center">
       <Illustration />
-      <h2 className="mt-8 font-display text-[24px] font-medium text-ink">Start your first project</h2>
+      <h2 className="mt-8 font-display text-[24px] font-normal text-ink">Start your first project</h2>
       <p className="mt-2 max-w-[42ch] text-[14px] leading-relaxed text-muted">
         Turn a big main or side quest into stages on a kanban board. Every stage you finish drops a stone in the jar.
       </p>

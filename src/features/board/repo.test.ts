@@ -14,6 +14,7 @@ import {
   deleteColumn,
   deleteSubtask,
   loadBoard,
+  loadInProgress,
   loadProjects,
   moveCard,
   moveColumn,
@@ -479,5 +480,86 @@ describe('reads', () => {
     expect(list[0]).toMatchObject({ done: 0, total: 0, columns: 3, nextCard: undefined })
     const b = await board(d, p.id)
     expect(Object.keys(b.cardsByColumn).sort()).toEqual([p.todo, p.doing, p.done].sort())
+  })
+})
+
+describe('in progress', () => {
+  const ids = async (d: MarbleDB) => (await loadInProgress(d)).map((x) => x.card.title)
+
+  it('lists cards in the middle column of a default board, with column, quest and subtask progress', async () => {
+    const d = freshDb()
+    const p = await project(d)
+    await addCard(p.id, p.todo, 'Backlog', NOW, d)
+    const doing = await addCard(p.id, p.doing, 'Doing', NOW, d)
+    await addCard(p.id, p.done, 'Shipped', NOW, d)
+    await addSubtask(doing, 'a', NOW, d)
+    const b = await addSubtask(doing, 'b', NOW, d)
+    await toggleSubtask(doing, b, true, NOW, d)
+    const list = await loadInProgress(d)
+    expect(list).toHaveLength(1)
+    expect(list[0].card.id).toBe(doing)
+    expect(list[0].column.title).toBe('In progress')
+    expect(list[0].quest.id).toBe(p.id)
+    expect(list[0].subtasks).toEqual({ done: 1, total: 2 })
+  })
+
+  it('sorts due cards first (soonest first), then most recently updated', async () => {
+    const d = freshDb()
+    const p = await project(d)
+    const m = await project(d, 'mq')
+    await addCard(p.id, p.doing, 'Old', at(D0, 9), d)
+    await addCard(m.id, m.doing, 'Recent', at(D0, 15), d)
+    const later = await addCard(p.id, p.doing, 'Due later', at(D0, 10), d)
+    const soon = await addCard(m.id, m.doing, 'Due soon', at(D0, 10), d)
+    await updateCard(later, { dueDate: day(5) }, at(D0, 11), d)
+    await updateCard(soon, { dueDate: day(2) }, at(D0, 11), d)
+    expect(await ids(d)).toEqual(['Due soon', 'Due later', 'Recent', 'Old'])
+  })
+
+  it('has nothing on a 2-column board', async () => {
+    const d = freshDb()
+    const p = await project(d)
+    await addCard(p.id, p.doing, 'Doing', NOW, d)
+    await addCard(p.id, p.todo, 'Backlog', NOW, d)
+    await deleteColumn(p.doing, p.todo, NOW, d)
+    expect(await ids(d)).toEqual([])
+  })
+
+  it('follows renamed, added and reordered columns', async () => {
+    const d = freshDb()
+    const p = await project(d)
+    await renameColumn(p.doing, 'Building', NOW, d)
+    const review = await addColumn(p.id, 'Review', undefined, NOW, d) // before Done
+    await addCard(p.id, p.todo, 'Backlog', NOW, d)
+    await addCard(p.id, p.doing, 'Building it', at(D0, 13), d)
+    await addCard(p.id, review, 'Reviewing it', at(D0, 14), d)
+    const list = await loadInProgress(d)
+    expect(list.map((x) => [x.card.title, x.column.title])).toEqual([
+      ['Reviewing it', 'Review'],
+      ['Building it', 'Building'],
+    ])
+    // Building becomes the first column (backlog), To do a middle one.
+    await moveColumn(p.doing, 0, NOW, d)
+    expect(await ids(d)).toEqual(['Reviewing it', 'Backlog'])
+    // Review moved to the end becomes the done column.
+    await moveColumn(review, 3, NOW, d)
+    expect(await ids(d)).toEqual(['Backlog'])
+  })
+
+  it('leaves out completed and deleted projects and deleted cards', async () => {
+    const d = freshDb()
+    const p = await project(d)
+    const m = await project(d, 'mq')
+    const gone = await project(d)
+    const card = await addCard(p.id, p.doing, 'Deleted', NOW, d)
+    await addCard(p.id, p.doing, 'Kept', NOW, d)
+    await addCard(m.id, m.doing, 'On a finished project', NOW, d)
+    await addCard(gone.id, gone.doing, 'On a deleted project', NOW, d)
+    await deleteCard(card, NOW, d)
+    await completeProject(m.id, NOW, d)
+    await deleteQuest(gone.id, NOW, d)
+    expect(await ids(d)).toEqual(['Kept'])
+    await reopenProject(m.id, at(D0, 13), d)
+    expect((await ids(d)).sort()).toEqual(['Kept', 'On a finished project'])
   })
 })

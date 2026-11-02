@@ -98,7 +98,7 @@ export function SettingsScreen() {
 
       <section className={`${ui.card} p-5`}>
         <h2 className="text-[15px] font-semibold tracking-tight">Your data</h2>
-        <p className="mt-0.5 text-[13px] text-muted">Everything is stored only on this device. Browsers can clear site data, so keep a backup.</p>
+        <p className="mt-0.5 text-[13px] text-muted">Everything is stored only on this device, with no account needed. Browsers can clear site data, so keep a backup. Signing in to sync across devices is coming later.</p>
         <p className="mt-3 text-[13px] text-faint">
           Last backup:{' '}
           <span className="font-medium text-ink">

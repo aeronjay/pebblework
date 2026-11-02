@@ -9,6 +9,7 @@ import type {
   MarbleEvent,
   Meta,
   Milestone,
+  Note,
   Quest,
   QuestCompletion,
   Settings,
@@ -34,7 +35,9 @@ export class MarbleDB extends Dexie {
   stones!: EntityTable<Stone, 'id'>
   boardColumns!: EntityTable<BoardColumn, 'id'>
   cards!: EntityTable<Card, 'id'>
+  notes!: EntityTable<Note, 'id'>
 
+  // The IndexedDB name predates the Pebblework rename. Never change it: a new name opens an empty database.
   constructor(name = 'marble-jar') {
     super(name)
     this.version(1).stores({
@@ -71,6 +74,7 @@ export class MarbleDB extends Dexie {
         const marked = markClaimedFromDayClaims(await table.toArray(), claims)
         if (marked.length) await table.bulkPut(marked)
       })
+    this.version(5).stores({ notes: 'id, updatedAt, questId' })
   }
 }
 

@@ -73,7 +73,7 @@ const ITEMS: { label: string; hint: string; swatch: ReactNode }[] = [
   },
 ]
 
-export function Legend() {
+export function Legend({ hint }: { hint?: string }) {
   const [open, setOpen] = useState(readOpen)
   const reduce = useReducedMotion()
   const toggle = () => {
@@ -89,18 +89,18 @@ export function Legend() {
 
   return (
     <div>
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-3">
+        {hint && <p className="min-w-0 text-[12.5px] leading-snug text-muted">{hint}</p>}
         <button
           type="button"
           onClick={toggle}
           aria-expanded={open}
           aria-controls="qc-legend"
-          className="-ml-1.5 inline-flex items-center gap-1 rounded-[8px] px-1.5 py-1 text-[11px] font-medium text-muted transition-colors hover:text-ink focus-visible:outline-2 focus-visible:outline-ring"
+          className="-mr-1.5 inline-flex shrink-0 items-center gap-1 rounded-[8px] px-1.5 py-1 text-[11px] font-medium text-muted transition-colors hover:text-ink focus-visible:outline-2 focus-visible:outline-ring"
         >
           Key
           <ChevronDown size={12} strokeWidth={1.75} className={`transition-transform duration-240 ease-out-soft ${open ? 'rotate-180' : ''}`} />
         </button>
-        <IntensityScale />
       </div>
       <AnimatePresence initial={false}>
         {open && (

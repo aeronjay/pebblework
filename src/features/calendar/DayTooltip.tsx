@@ -52,11 +52,11 @@ export function DayTooltip({ day, pos }: { day: CellDay; pos: TipPos }) {
         {day.categories.length > 0 && (
           <div className="mt-2 flex flex-wrap gap-1">
             {day.categories.map((c) => {
-              const { Icon, short, soft, ink } = CATEGORY[c]
+              const { Icon, label, soft, ink } = CATEGORY[c]
               return (
-                <span key={c} className="inline-flex items-center gap-1 rounded-chip px-1.5 py-0.5 text-[10.5px] font-semibold tracking-wide" style={{ background: soft, color: ink }}>
+                <span key={c} className="inline-flex items-center gap-1 rounded-chip px-1.5 py-0.5 text-[11px] font-semibold" style={{ background: soft, color: ink }}>
                   <Icon size={11} strokeWidth={1.75} />
-                  {short}
+                  {label.replace(' Quest', '')}
                 </span>
               )
             })}

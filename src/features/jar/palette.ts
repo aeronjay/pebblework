@@ -40,8 +40,9 @@ export function mix(a: RGB, b: RGB, t: number): RGB {
 }
 
 // The app theme (Settings → Appearance) is resolved onto <html data-theme>; fall back to the OS before it's set.
-export function prefersDark(): boolean {
-  const t = document.documentElement.dataset.theme
+export function prefersDark(el?: Element): boolean {
+  // Nearest themed ancestor: Home's jar stage is dark even when the app is light.
+  const t = (el?.closest<HTMLElement>('[data-theme]') ?? document.documentElement).dataset.theme
   if (t) return t === 'dark'
   return window.matchMedia?.('(prefers-color-scheme: dark)').matches ?? false
 }
@@ -57,7 +58,7 @@ export interface JarTheme {
 
 export function readTheme(el?: Element): JarTheme {
   const color = (c: QuestCategory) => toRgb(resolveCategoryColor(c, 'color', el) || '#999')
-  return { dark: prefersDark(), stones: { dq: color('dq'), mq: color('mq'), sq: color('sq') } }
+  return { dark: prefersDark(el), stones: { dq: color('dq'), mq: color('mq'), sq: color('sq') } }
 }
 
 // Calls back when the theme flips (tokens swap with <html data-theme>).

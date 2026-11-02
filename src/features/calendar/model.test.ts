@@ -93,7 +93,7 @@ describe('calendar model', () => {
         { status: 'ready', inMonth: true },
         { status: 'closed', inMonth: true },
       ]),
-    ).toBe('1 claimed · 1 ready')
+    ).toBe('1 claimed, 1 ready')
     expect(monthSummary([])).toBe('')
   })
 })

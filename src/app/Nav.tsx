@@ -1,6 +1,6 @@
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
 import { useEffect, useRef, useState, type ComponentType, type FocusEvent, type PointerEvent, type ReactNode } from 'react'
-import { HomeIcon, LogoMark, ProjectsIcon, SettingsIcon, type NavIconProps } from './icons/NavIcons'
+import { HomeIcon, LogoMark, NotesIcon, ProjectsIcon, SettingsIcon, type NavIconProps } from './icons/NavIcons'
 import { href, type Route } from './router'
 
 interface Tab {
@@ -13,6 +13,7 @@ interface Tab {
 const TABS: Tab[] = [
   { label: 'Home', to: href.home, match: ['home'], Icon: HomeIcon },
   { label: 'Projects', to: href.projects, match: ['projects', 'board'], Icon: ProjectsIcon },
+  { label: 'Notes', to: href.notes, match: ['notes'], Icon: NotesIcon },
   { label: 'Settings', to: href.settings, match: ['settings'], Icon: SettingsIcon },
 ]
 
@@ -115,12 +116,12 @@ export function SideNav({ route }: { route: Route }) {
           expanded ? 'w-[224px] bg-elevated shadow-pop' : 'w-16 bg-canvas/90'
         }`}
       >
-        <a href={href.home} aria-label="Marble Jar, home" className={`mb-7 flex h-10 items-center gap-3 rounded-control ${focus}`}>
+        <a href={href.home} aria-label="Pebblework, home" className={`mb-7 flex h-10 items-center gap-3 rounded-control ${focus}`}>
           <span className="grid size-10 shrink-0 place-items-center">
             <LogoMark className="size-[34px]" />
           </span>
-          <Label expanded={expanded} className="font-display text-[17px] font-semibold text-ink">
-            Marble Jar
+          <Label expanded={expanded} className="font-display text-[19px] font-normal tracking-[-0.01em] text-ink">
+            Pebblework
           </Label>
         </a>
         <ul className="flex flex-col gap-1">{main.map(item)}</ul>

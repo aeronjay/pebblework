@@ -42,7 +42,7 @@
   animation: qc-sheen 3.6s var(--ease-out-soft) infinite;
   animation-delay: var(--qc-delay, 0s);
 }
-:root[data-theme='dark'] {
+[data-theme='dark'] {
   .qc-ready::after {
     background-image: linear-gradient(105deg, transparent 35%, rgb(255 255 255 / 0.22) 50%, transparent 65%);
     mix-blend-mode: normal;
@@ -90,9 +90,10 @@
   }
 }
 
-/* Claim button: a plain ink key; the stones flying to the jar are the moment, not the button. */
+/* Claim button: the trail blaze, the one obvious next step when a day is ready. The stones flying to the jar are the
+   moment, not the button. */
 .qc-claim {
-  background: var(--color-ink);
+  background: var(--color-blaze);
 }
 .qc-claim-core {
   position: relative;

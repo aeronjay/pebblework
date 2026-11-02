@@ -2,85 +2,110 @@
 
 /* Theme lives on <html data-theme="light|dark"> (set before paint in index.html, synced to Settings by app/theme.ts). */
 @custom-variant dark (&:where([data-theme='dark'], [data-theme='dark'] *));
+/* Home's no-scroll app shell: wide AND tall enough to fit the jar + calendar beside the quest list. Below it the page scrolls. */
+@custom-variant tall (@media (min-width: 64rem) and (min-height: 700px));
 
 /* `static` emits every token even if no utility uses it: meta.ts reads var(--color-dq) etc. from JS. */
 @theme static {
-  /* One family throughout: Geologica, a calm grotesque with a slightly mineral cut. Headings use weight and size, not a
-     second face. */
-  --font-sans: 'Geologica Variable', ui-sans-serif, system-ui, sans-serif;
-  --font-display: 'Geologica Variable', ui-sans-serif, system-ui, sans-serif;
+  /* Pebblework, "Trail & granite". Familjen Grotesk carries the UI; Young Serif (one weight, 400) is reserved for page
+     headings and the wordmark, so headings get their voice from the face, never from faux bold. */
+  --font-sans: 'Familjen Grotesk Variable', ui-sans-serif, system-ui, sans-serif;
+  --font-display: 'Young Serif', ui-serif, Georgia, serif;
 
-  --color-jar: oklch(0.97 0.01 160 / 0.35);
+  --color-jar: oklch(0.97 0.006 140 / 0.35);
 
-  /* "Riverbed", light: pale wet slate, frosted-glass surfaces, deep slate-green ink. */
-  --color-canvas: #e3e8e4;
-  --color-surface: #f5f7f4;
-  --color-elevated: #fbfcfa;
-  --color-sunken: #d8dfda;
-  --color-line: rgb(30 43 40 / 0.1);
-  --color-line-strong: rgb(30 43 40 / 0.2);
-  --color-ink: #1e2b28;
-  --color-muted: #52605b;
-  --color-faint: #5c6964;
-  --color-ring: #3a6888;
+  /* Light: weathered granite paper, deep spruce ink. */
+  --color-canvas: #e6e8e3;
+  --color-surface: #f7f8f4;
+  --color-elevated: #fdfdfb;
+  --color-sunken: #d8dbd3;
+  --color-line: rgb(31 58 51 / 0.11);
+  --color-line-strong: rgb(31 58 51 / 0.22);
+  --color-ink: #1f3a33;
+  --color-muted: #4d5d57;
+  --color-faint: #5f6e68;
+  --color-ring: #2d7466;
 
-  /* Quest types are the stones they drop: river blue (daily), ochre (main), rose quartz (side).
+  /* Trail blaze: the one action color (primary buttons, focus strip, claim). Never decoration. */
+  --color-blaze: #c2431a;
+  --color-blaze-soft: rgb(194 67 26 / 0.11);
+  --color-blaze-ink: #a33a16;
+  --color-on-blaze: #ffffff;
+
+  /* Quest types are the stones they drop: river slate (daily), lichen (main), heather (side).
      Base, tint, and readable text on the tint. */
-  --color-dq: #4c7b9e;
-  --color-dq-soft: rgb(76 123 158 / 0.14);
-  --color-dq-ink: #2d5570;
-  --color-mq: #c08a2e;
-  --color-mq-soft: rgb(192 138 46 / 0.16);
-  --color-mq-ink: #74501a;
-  --color-sq: #b86f84;
-  --color-sq-soft: rgb(184 111 132 / 0.15);
-  --color-sq-ink: #85405a;
+  --color-dq: #557c97;
+  --color-dq-soft: rgb(85 124 151 / 0.14);
+  --color-dq-ink: #2f5068;
+  --color-mq: #7f8f2e;
+  --color-mq-soft: rgb(127 143 46 / 0.16);
+  --color-mq-ink: #4c5718;
+  --color-sq: #93729f;
+  --color-sq-soft: rgb(147 114 159 / 0.15);
+  --color-sq-ink: #5e4269;
 
   /* Destructive actions and errors */
-  --color-danger: oklch(0.58 0.17 28);
-  --color-danger-soft: oklch(0.58 0.17 28 / 0.1);
-  --color-danger-ink: oklch(0.48 0.15 28);
+  --color-danger: oklch(0.56 0.17 25);
+  --color-danger-soft: oklch(0.56 0.17 25 / 0.1);
+  --color-danger-ink: oklch(0.46 0.15 25);
 
-  /* Radius follows hierarchy: panels, then controls, then chips. */
-  --radius-card: 14px;
-  --radius-control: 8px;
+  /* Radius follows hierarchy: panels, then controls, then chips. Slightly tighter than before: carved, not pillowy. */
+  --radius-card: 12px;
+  --radius-control: 7px;
   --radius-chip: 999px;
 
   /* Panels sit flat on the page, separated by a hairline; only floating things (menus, dialogs) cast a shadow. */
   --shadow-card: 0 0 0 0 transparent;
-  --shadow-pop: 0 1px 2px rgb(30 43 40 / 0.08), 0 12px 32px -8px rgb(30 43 40 / 0.22);
+  --shadow-pop: 0 1px 2px rgb(31 58 51 / 0.08), 0 14px 34px -10px rgb(31 58 51 / 0.24);
 
   --ease-out-soft: cubic-bezier(0.22, 1, 0.36, 1);
 }
 
-/* Unlayered, so it beats Tailwind's @layer theme defaults. Matches the `dark:` variant (data-theme).
-   "Riverbed", dark: stone under water at dusk, green-tinted rather than neutral black. */
+/* The stage: Home's jar panel, a spruce-dark scene in both themes. Kept off the dark token block below so a subtree
+   marked data-theme="dark" (the stage itself) doesn't redefine it. */
+:root {
+  --stage-bg: #1b322b;
+  --stage-glow: rgb(214 236 222 / 0.12);
+}
 :root[data-theme='dark'] {
-  --color-canvas: #151c1a;
-  --color-surface: #1c2523;
-  --color-elevated: #24302d;
-  --color-sunken: #111715;
-  --color-line: rgb(214 230 222 / 0.09);
-  --color-line-strong: rgb(214 230 222 / 0.18);
-  --color-ink: #e2e9e5;
-  --color-muted: #a2afa9;
-  --color-faint: #8d9a94;
-  --color-ring: #8db5d0;
-  --color-jar: oklch(0.9 0.02 160 / 0.2);
+  --stage-bg: #1a2823;
+  --stage-glow: rgb(214 236 222 / 0.09);
+}
 
-  --color-dq: #7fa8c6;
-  --color-dq-soft: rgb(127 168 198 / 0.16);
-  --color-dq-ink: #b8d2e5;
-  --color-mq: #d6a552;
-  --color-mq-soft: rgb(214 165 82 / 0.16);
-  --color-mq-ink: #ebcd93;
-  --color-sq: #d297a8;
-  --color-sq-soft: rgb(210 151 168 / 0.17);
-  --color-sq-ink: #ecc3cf;
+/* Unlayered, so it beats Tailwind's @layer theme defaults. Matches the `dark:` variant (data-theme), on <html> or on any
+   subtree (Home's jar stage is always dark). Dark: the trail after sundown, spruce-black rather than neutral black. */
+:root[data-theme='dark'],
+[data-theme='dark'] {
+  --color-canvas: #121a17;
+  --color-surface: #19231f;
+  --color-elevated: #212d29;
+  --color-sunken: #0d1411;
+  --color-line: rgb(220 232 224 / 0.09);
+  --color-line-strong: rgb(220 232 224 / 0.18);
+  --color-ink: #e3e8e1;
+  --color-muted: #a3b0aa;
+  --color-faint: #8e9b95;
+  --color-ring: #7cc0ae;
+  --color-jar: oklch(0.9 0.015 140 / 0.2);
 
-  --color-danger: oklch(0.7 0.15 28);
-  --color-danger-soft: oklch(0.7 0.15 28 / 0.14);
-  --color-danger-ink: oklch(0.82 0.09 28);
+  --color-blaze: #f0774a;
+  --color-blaze-soft: rgb(240 119 74 / 0.14);
+  --color-blaze-ink: #f6a483;
+  --color-on-blaze: #121a17;
+
+  --color-dq: #8fb0c6;
+  --color-dq-soft: rgb(143 176 198 / 0.16);
+  --color-dq-ink: #c0d5e3;
+  --color-mq: #b7c46a;
+  --color-mq-soft: rgb(183 196 106 / 0.16);
+  --color-mq-ink: #d7e09f;
+  --color-sq: #bfa2cb;
+  --color-sq-soft: rgb(191 162 203 / 0.17);
+  --color-sq-ink: #ddc9e5;
+
+  --color-danger: oklch(0.7 0.15 25);
+  --color-danger-soft: oklch(0.7 0.15 25 / 0.14);
+  --color-danger-ink: oklch(0.82 0.09 25);
 
   --shadow-pop: inset 0 1px 0 rgb(255 255 255 / 0.05), 0 16px 40px -10px rgb(0 0 0 / 0.6);
 }
@@ -88,7 +113,8 @@
 :root {
   color-scheme: light;
 }
-:root[data-theme='dark'] {
+:root[data-theme='dark'],
+[data-theme='dark'] {
   color-scheme: dark;
 }
 

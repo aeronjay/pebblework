@@ -216,7 +216,7 @@ function Sheet({ target, todayKey, onClose }: { target: SheetTarget; todayKey: s
               placeholder={asProject ? 'Name the project' : 'What’s the quest?'}
               aria-label="Title"
               maxLength={140}
-              className="w-full border-0 bg-transparent px-0 py-1 font-display text-[24px] leading-tight font-medium text-ink outline-none placeholder:text-faint/70 focus-visible:outline-none"
+              className="w-full border-0 bg-transparent px-0 py-1 font-display text-[24px] leading-tight font-normal text-ink outline-none placeholder:text-faint/70 focus-visible:outline-none"
             />
 
             <div>
@@ -244,7 +244,7 @@ function Sheet({ target, todayKey, onClose }: { target: SheetTarget; todayKey: s
                 <label className={labelCls} htmlFor={`${titleId}-date`}>
                   {asProject ? (
                     <>
-                      Deadline <span className="font-normal tracking-normal text-faint normal-case">· optional</span>
+                      Deadline <span className="font-normal tracking-normal text-faint normal-case">(optional)</span>
                     </>
                   ) : (
                     'Due date'
@@ -303,7 +303,7 @@ function Sheet({ target, todayKey, onClose }: { target: SheetTarget; todayKey: s
             {!asProject && (
             <div>
               <label className={labelCls} htmlFor={`${titleId}-time`}>
-                Time <span className="font-normal tracking-normal text-faint normal-case">· optional</span>
+                Time <span className="font-normal tracking-normal text-faint normal-case">(optional)</span>
               </label>
               <div className="flex items-center gap-2">
                 <div className="relative flex-1">
@@ -320,7 +320,7 @@ function Sheet({ target, todayKey, onClose }: { target: SheetTarget; todayKey: s
 
             <div>
               <label className={labelCls} htmlFor={`${titleId}-note`}>
-                Note <span className="font-normal tracking-normal text-faint normal-case">· optional</span>
+                Note <span className="font-normal tracking-normal text-faint normal-case">(optional)</span>
               </label>
               <textarea
                 id={`${titleId}-note`}
@@ -411,7 +411,6 @@ function CategoryPicker({ value, onChange, disabled, labelledBy }: { value: Ques
             )}
             <meta.Icon aria-hidden className="relative size-4" strokeWidth={1.75} />
             <span className="relative">{meta.label.replace(' Quest', '')}</span>
-            <span className="relative hidden text-[10.5px] font-semibold tracking-[0.06em] opacity-70 sm:inline">{meta.short}</span>
           </button>
         )
       })}

@@ -9,10 +9,11 @@ export const ui = {
   secondary: 'border border-line bg-surface text-ink shadow-card hover:bg-sunken',
   danger: 'bg-danger-soft text-danger-ink hover:brightness-95',
   card: 'rounded-card border border-line bg-surface p-4 shadow-card',
-  h1: 'font-display text-2xl font-semibold',
-  // The one main action per screen ("New quest", "New project"): solid ink, quiet everywhere else.
-  cta: 'inline-flex items-center gap-2 rounded-control bg-ink py-2.5 pr-3 pl-3.5 text-[14px] font-medium text-canvas transition-opacity hover:opacity-90 outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-canvas',
-  ctaKbd: 'ml-1 hidden rounded-[4px] border border-canvas/25 px-1.5 font-sans text-[11px] text-canvas/70 md:inline',
+  // Young Serif has a single weight: never pair font-display with medium/semibold/bold.
+  h1: 'font-display text-[34px] leading-[1.05] font-normal tracking-[-0.02em] md:text-[40px]',
+  // The one main action per screen ("New quest", "New project"): trail blaze, the only place the color fills a button.
+  cta: 'inline-flex items-center gap-2 rounded-control bg-blaze py-2.5 pr-3 pl-3.5 text-[14px] font-semibold text-on-blaze transition-[filter] hover:brightness-[1.06] active:brightness-95 outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-canvas',
+  ctaKbd: 'ml-1 hidden rounded-[4px] border border-on-blaze/30 px-1.5 font-sans text-[11px] font-medium text-on-blaze/75 md:inline',
 }
 
 export function seg(active: boolean) {

@@ -86,7 +86,7 @@ export function BoardHeader({ quest, progress, todayKey, onRename, onComplete, o
                 type="button"
                 onClick={() => setRenaming(true)}
                 title="Rename project"
-                className="-mx-1.5 max-w-full rounded-[10px] px-1.5 text-left font-display text-[28px] leading-[1.15] font-semibold text-balance text-ink outline-none hover:bg-ink/[0.04] focus-visible:ring-2 focus-visible:ring-ring md:text-[34px]"
+                className="-mx-1.5 max-w-full rounded-[10px] px-1.5 text-left font-display text-[28px] leading-[1.15] font-normal text-balance text-ink outline-none hover:bg-ink/[0.04] focus-visible:ring-2 focus-visible:ring-ring md:text-[34px]"
               >
                 {quest.title}
               </button>
@@ -155,7 +155,7 @@ function ProjectProgress({ done, total, complete, color }: { done: number; total
           {done}/{total}
         </span>{' '}
         stages
-        <span className="mx-1.5 text-faint">·</span>
+        <span aria-hidden className="mx-2 inline-block h-3 w-px translate-y-0.5 bg-line-strong" />
         <span className="tabular-nums">{complete ? 'Completed' : `${Math.round(pct * 100)}%`}</span>
       </p>
     </div>
@@ -183,7 +183,7 @@ function TitleField({ initial, onDone }: { initial: string; onDone: (title: stri
         if (e.key === 'Enter') finish(value)
         if (e.key === 'Escape') finish(null)
       }}
-      className="mt-3 -mx-1.5 w-[min(100%,40ch)] rounded-[10px] border border-ring/60 bg-surface px-1.5 font-display text-[28px] leading-[1.15] font-semibold text-ink ring-2 ring-ring/25 outline-none md:text-[34px]"
+      className="mt-3 -mx-1.5 w-[min(100%,40ch)] rounded-[10px] border border-ring/60 bg-surface px-1.5 font-display text-[28px] leading-[1.15] font-normal text-ink ring-2 ring-ring/25 outline-none md:text-[34px]"
     />
   )
 }
