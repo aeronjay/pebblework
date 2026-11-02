@@ -1,0 +1,164 @@
+/* Quest calendar effects that utilities can't express. Plain CSS on the design tokens; every animation has a
+   reduced-motion fallback at the bottom. */
+
+.qc-cell {
+  position: relative;
+  isolation: isolate;
+}
+
+/* Today: a crisp ink ring, inset so it never collides with neighbours. */
+.qc-today::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  box-shadow: inset 0 0 0 1.5px var(--color-ink);
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* Ready: a gilded hairline + soft glow, with a slow light sweep across the tile. */
+.qc-ready {
+  box-shadow:
+    inset 0 0 0 1px color-mix(in oklch, var(--color-mq) 55%, transparent),
+    0 0 0 3px color-mix(in oklch, var(--color-mq) 10%, transparent),
+    0 6px 16px -6px color-mix(in oklch, var(--color-mq) 60%, transparent);
+}
+.qc-ready::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  background: linear-gradient(
+    105deg,
+    transparent 35%,
+    rgb(255 255 255 / 0.6) 50%,
+    transparent 65%
+  );
+  background-size: 300% 100%;
+  background-position: 120% 0;
+  mix-blend-mode: soft-light;
+  animation: qc-sheen 3.6s var(--ease-out-soft) infinite;
+  animation-delay: var(--qc-delay, 0s);
+}
+:root[data-theme='dark'] {
+  .qc-ready::after {
+    background-image: linear-gradient(105deg, transparent 35%, rgb(255 255 255 / 0.22) 50%, transparent 65%);
+    mix-blend-mode: normal;
+  }
+}
+@keyframes qc-sheen {
+  0% {
+    background-position: 120% 0;
+  }
+  45%,
+  100% {
+    background-position: -20% 0;
+  }
+}
+
+/* Ready marker: a small gilded ember that breathes. */
+.qc-ember {
+  box-shadow: 0 0 0 2px color-mix(in oklch, var(--color-mq) 22%, transparent), 0 0 8px 1px color-mix(in oklch, var(--color-mq) 70%, transparent);
+  animation: qc-breathe 2.4s ease-in-out infinite;
+  animation-delay: var(--qc-delay, 0s);
+}
+@keyframes qc-breathe {
+  50% {
+    box-shadow: 0 0 0 3px color-mix(in oklch, var(--color-mq) 10%, transparent), 0 0 12px 2px color-mix(in oklch, var(--color-mq) 45%, transparent);
+  }
+}
+
+/* Claimed cells rise and release a glow as their stones leave for the jar. */
+.qc-lift {
+  animation: qc-lift 720ms var(--ease-out-soft) both;
+  z-index: 2;
+}
+@keyframes qc-lift {
+  0% {
+    transform: translateY(0) scale(1);
+    box-shadow: 0 0 0 0 color-mix(in oklch, var(--color-mq) 0%, transparent);
+  }
+  35% {
+    transform: translateY(-3px) scale(1.08);
+    box-shadow: 0 10px 24px -6px color-mix(in oklch, var(--color-mq) 70%, transparent);
+  }
+  100% {
+    transform: translateY(0) scale(1);
+    box-shadow: 0 0 0 0 color-mix(in oklch, var(--color-mq) 0%, transparent);
+  }
+}
+
+/* Claim button: an animated category-gradient rim around an ink core. */
+.qc-claim {
+  background: linear-gradient(
+    110deg,
+    var(--color-dq),
+    var(--color-mq),
+    var(--color-sq),
+    var(--color-dq)
+  );
+  background-size: 300% 100%;
+  animation: qc-rim 6s linear infinite;
+}
+.qc-claim-core {
+  position: relative;
+  overflow: hidden;
+}
+.qc-claim-core::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(100deg, transparent 30%, rgb(255 255 255 / 0.16) 50%, transparent 70%);
+  background-size: 250% 100%;
+  background-position: 130% 0;
+  animation: qc-sheen 4.2s var(--ease-out-soft) infinite 1.2s;
+}
+@keyframes qc-rim {
+  to {
+    background-position: 300% 0;
+  }
+}
+
+.qc-spin {
+  animation: qc-spin 0.9s linear infinite;
+}
+@keyframes qc-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .qc-ember {
+    animation: none;
+  }
+  .qc-ready::after,
+  .qc-claim-core::after {
+    animation: none;
+    background: none;
+  }
+  .qc-claim {
+    animation: none;
+    background-position: 50% 0;
+  }
+  .qc-lift {
+    animation: qc-lift-calm 400ms ease-out both;
+  }
+  .qc-spin {
+    animation-duration: 2.4s;
+  }
+}
+@keyframes qc-lift-calm {
+  0% {
+    opacity: 1;
+  }
+  40% {
+    opacity: 0.6;
+  }
+  100% {
+    opacity: 1;
+  }
+}
