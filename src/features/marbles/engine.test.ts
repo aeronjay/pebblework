@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { freshDb } from '../../test/db'
-import { awardMarbles, ensureActiveJar, jarMarbles, revokeMarbles, rollRarity } from './engine'
+import { newMeta } from '../../db/db'
+import { awardMarbles, ensureActiveJar, getActiveJar, jarMarbles, revokeMarbles, rollRarity } from './engine'
 
 describe('rollRarity', () => {
   it('maps the roll to rarity tiers', () => {
@@ -18,6 +19,20 @@ describe('marble engine', () => {
     const b = await ensureActiveJar(d)
     expect(a.id).toBe(b.id)
     expect(a.capacity).toBe(50)
+  })
+
+  it('ignores quest jars and treats kind-less jars as goal jars', async () => {
+    const d = freshDb()
+    const meta = newMeta()
+    await d.jars.add({ id: 'quest', kind: 'quest', capacity: 30, startedAt: meta.createdAt, ...meta })
+    const created = await ensureActiveJar(d)
+    expect(created.id).not.toBe('quest')
+    expect(created.kind).toBe('goal')
+
+    const legacy = freshDb()
+    await legacy.jars.add({ id: 'old', capacity: 100, startedAt: meta.createdAt, ...meta })
+    await legacy.jars.add({ id: 'quest', kind: 'quest', capacity: 30, startedAt: meta.createdAt, ...meta })
+    expect((await getActiveJar(legacy))?.id).toBe('old')
   })
 
   it('awards one event per marble and revokes them by source', async () => {

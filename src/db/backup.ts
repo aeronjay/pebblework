@@ -1,8 +1,10 @@
 import type Dexie from 'dexie'
-import { db, type MarbleDB } from './db'
+import { db, markClaimedFromDayClaims, type MarbleDB } from './db'
+import type { DayClaim, QuestCompletion } from './types'
 
 export const BACKUP_APP = 'marble-jar'
-export const BACKUP_SCHEMA_VERSION = 1
+// v1 (no quest tables), v2 (no board tables) and v3 (day-level claims) backups still import
+export const BACKUP_SCHEMA_VERSION = 4
 
 const TABLES = [
   'goals',
@@ -14,6 +16,12 @@ const TABLES = [
   'weeklyReviews',
   'unlocks',
   'settings',
+  'quests',
+  'questCompletions',
+  'dayClaims',
+  'stones',
+  'boardColumns',
+  'cards',
 ] as const
 
 type TableName = (typeof TABLES)[number]
@@ -60,12 +68,18 @@ export function parseBackup(json: string): Backup {
   return backup as Backup
 }
 
-// Replaces all local data with the backup's contents, atomically.
+// Replaces all local data with the backup's contents, atomically. Pre-v4 backups get the v4 claim migration.
 export async function importBackup(backup: Backup, database: MarbleDB = db): Promise<void> {
+  const data = { ...backup.data }
+  if (backup.schemaVersion < 4 && data.questCompletions?.length) {
+    const completions = data.questCompletions as QuestCompletion[]
+    const marked = new Map(markClaimedFromDayClaims(completions, (data.dayClaims ?? []) as DayClaim[]).map((c) => [c.id, c]))
+    data.questCompletions = completions.map((c) => marked.get(c.id) ?? c)
+  }
   await database.transaction('rw', TABLES.map((t) => database[t]), async () => {
     for (const t of TABLES) {
       await database[t].clear()
-      const rows = backup.data[t] ?? []
+      const rows = data[t] ?? []
       if (rows.length) await (database[t] as Dexie.Table).bulkPut(rows)
     }
   })

@@ -11,8 +11,9 @@ export function rollRarity(rng: Rng = Math.random): Rarity {
   return 'normal'
 }
 
+// Goal jars only; quest jars are fed by claims (see features/quests/claim.ts).
 export async function getActiveJar(database: MarbleDB): Promise<Jar | undefined> {
-  return database.jars.filter((j) => !j.sealedAt && !j.deletedAt).first()
+  return database.jars.filter((j) => (j.kind ?? 'goal') === 'goal' && !j.sealedAt && !j.deletedAt).first()
 }
 
 export async function ensureActiveJar(database: MarbleDB): Promise<Jar> {
@@ -20,7 +21,7 @@ export async function ensureActiveJar(database: MarbleDB): Promise<Jar> {
   if (existing) return existing
   const { jarCapacity } = await getSettings(database)
   const now = new Date().toISOString()
-  const jar: Jar = { id: newId(), capacity: jarCapacity, startedAt: now, ...newMeta(now) }
+  const jar: Jar = { id: newId(), kind: 'goal', capacity: jarCapacity, startedAt: now, ...newMeta(now) }
   await database.jars.add(jar)
   return jar
 }

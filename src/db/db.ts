@@ -1,12 +1,18 @@
 import Dexie, { type EntityTable } from 'dexie'
 import type {
+  BoardColumn,
+  Card,
   CheckIn,
+  DayClaim,
   Goal,
   Jar,
   MarbleEvent,
   Meta,
   Milestone,
+  Quest,
+  QuestCompletion,
   Settings,
+  Stone,
   StreakState,
   Unlock,
   WeeklyReview,
@@ -22,6 +28,12 @@ export class MarbleDB extends Dexie {
   weeklyReviews!: EntityTable<WeeklyReview, 'id'>
   unlocks!: EntityTable<Unlock, 'id'>
   settings!: EntityTable<Settings, 'id'>
+  quests!: EntityTable<Quest, 'id'>
+  questCompletions!: EntityTable<QuestCompletion, 'id'>
+  dayClaims!: EntityTable<DayClaim, 'dayKey'>
+  stones!: EntityTable<Stone, 'id'>
+  boardColumns!: EntityTable<BoardColumn, 'id'>
+  cards!: EntityTable<Card, 'id'>
 
   constructor(name = 'marble-jar') {
     super(name)
@@ -36,7 +48,41 @@ export class MarbleDB extends Dexie {
       unlocks: 'id, key, updatedAt',
       settings: 'id',
     })
+    // Old jars have no `kind` (= goal) and aren't in the kind index; goal lookups must filter, not query it.
+    this.version(2).stores({
+      jars: 'id, kind, startedAt, sealedAt, updatedAt',
+      quests: 'id, category, dueDate, updatedAt',
+      questCompletions: 'id, questId, dayKey, updatedAt',
+      dayClaims: 'dayKey, jarId, updatedAt',
+      stones: 'id, jarId, dayKey, at, updatedAt',
+    })
+    this.version(3).stores({
+      questCompletions: 'id, questId, dayKey, cardId, updatedAt',
+      boardColumns: 'id, questId, updatedAt',
+      cards: 'id, questId, columnId, updatedAt',
+    })
+    // Claims moved to the completion level (incremental claims). Before v4 a claimed day was final, so every live
+    // completion on a claimed day counts as claimed.
+    this.version(4)
+      .stores({ questCompletions: 'id, questId, dayKey, cardId, updatedAt' })
+      .upgrade(async (tx) => {
+        const claims = await tx.table<DayClaim, string>('dayClaims').toArray()
+        const table = tx.table<QuestCompletion, string>('questCompletions')
+        const marked = markClaimedFromDayClaims(await table.toArray(), claims)
+        if (marked.length) await table.bulkPut(marked)
+      })
   }
+}
+
+// Pre-v4 data (DB upgrade and old backups): stamps every live, unmarked completion on a claimed day with that day's
+// claim. Returns only the rows it changed.
+export function markClaimedFromDayClaims(completions: QuestCompletion[], claims: DayClaim[]): QuestCompletion[] {
+  const byDay = new Map(claims.map((c) => [c.dayKey, c]))
+  return completions.flatMap((c) => {
+    const claim = byDay.get(c.dayKey)
+    if (!claim || c.deletedAt || c.claimedAt) return []
+    return [{ ...c, claimedAt: claim.claimedAt, claimJarId: claim.jarId }]
+  })
 }
 
 export const db = new MarbleDB()
