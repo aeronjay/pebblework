@@ -1,17 +1,18 @@
+// Shared class strings, built on the design tokens in index.css (theme-aware, no dark: variants needed).
 export const ui = {
   input:
-    'w-full rounded-xl border border-stone-300 bg-white px-3 py-2 outline-none focus:border-stone-500 dark:border-stone-700 dark:bg-stone-900',
-  label: 'mb-1 block text-sm font-medium text-stone-600 dark:text-stone-300',
-  hint: 'mt-1 text-xs text-stone-400',
-  btn: 'rounded-xl px-4 py-2 font-medium transition active:scale-[.98] disabled:opacity-40',
-  primary: 'bg-stone-900 text-white dark:bg-stone-100 dark:text-stone-900',
-  secondary: 'bg-stone-200 text-stone-800 dark:bg-stone-800 dark:text-stone-100',
-  danger: 'bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-300',
-  card: 'rounded-2xl border border-stone-200 bg-white p-4 dark:border-stone-800 dark:bg-stone-900',
-  h1: 'text-2xl font-bold',
+    'w-full rounded-control border border-line-strong bg-surface px-3 py-2 text-ink outline-none transition placeholder:text-faint focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/30',
+  label: 'mb-1 block text-sm font-medium text-muted',
+  hint: 'mt-1 text-xs text-faint',
+  btn: 'inline-flex items-center justify-center gap-2 rounded-control px-4 py-2 font-medium transition active:scale-[.98] disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-canvas',
+  primary: 'bg-ink text-canvas shadow-card hover:opacity-90',
+  secondary: 'border border-line bg-surface text-ink shadow-card hover:bg-sunken',
+  danger: 'bg-danger-soft text-danger-ink hover:brightness-95',
+  card: 'rounded-card border border-line bg-surface p-4 shadow-card',
+  h1: 'font-display text-2xl font-semibold tracking-tight',
 }
 
 export function seg(active: boolean) {
-  return `flex-1 rounded-lg px-3 py-1.5 text-sm ${active ? 'bg-white font-semibold shadow-sm dark:bg-stone-700' : 'text-stone-500'}`
+  return `flex-1 rounded-lg px-3 py-1.5 text-sm transition ${active ? 'bg-surface font-semibold text-ink shadow-card' : 'text-muted hover:text-ink'}`
 }
-export const segGroup = 'flex gap-1 rounded-xl bg-stone-200 p-1 dark:bg-stone-800'
+export const segGroup = 'flex gap-1 rounded-control bg-sunken p-1'
