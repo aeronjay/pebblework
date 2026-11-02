@@ -11,12 +11,13 @@ export default defineConfig({
     VitePWA({
       registerType: 'autoUpdate',
       includeAssets: ['icon.svg'],
+      workbox: { globPatterns: ['**/*.{js,css,html,svg,woff2}'] },
       manifest: {
         name: 'Marble Jar',
         short_name: 'Marble Jar',
         description: 'Every win drops a marble.',
-        theme_color: '#1c1917',
-        background_color: '#1c1917',
+        theme_color: '#0C0D10',
+        background_color: '#0C0D10',
         display: 'standalone',
         start_url: '/',
         icons: [{ src: 'icon.svg', sizes: 'any', type: 'image/svg+xml', purpose: 'any maskable' }],
