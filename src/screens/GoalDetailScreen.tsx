@@ -1,4 +1,5 @@
 import { format } from 'date-fns'
+import { ChevronDown, ChevronLeft, ChevronUp, Pencil, Trash2, X } from 'lucide-react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { useState, type FormEvent } from 'react'
 import { href, navigate } from '../app/router'
@@ -19,26 +20,32 @@ export function GoalDetailScreen({ id }: { id: string }) {
     return (
       <div className={ui.card}>
         <p>This goal no longer exists.</p>
-        <a href={href.goals} className="mt-2 inline-block underline">Back to goals</a>
+        <a href={href.goals} className="mt-2 inline-block text-sm font-medium text-ink underline underline-offset-4">Back to goals</a>
       </div>
     )
   }
 
   return (
     <div className="flex max-w-2xl flex-col gap-5">
-      <a href={href.goals} className="text-sm text-stone-500">‹ Goals</a>
+      <a href={href.goals} className="-ml-1 inline-flex w-fit items-center gap-1 rounded-lg py-1 pr-2 text-sm font-medium text-muted transition hover:text-ink outline-none focus-visible:ring-2 focus-visible:ring-ring">
+        <ChevronLeft aria-hidden className="size-4" strokeWidth={1.75} />
+        Goals
+      </a>
       <header className="flex items-start gap-3">
-        <Marble color={goal.color} size={32} />
+        <span className="pt-1"><Marble color={goal.color} size={28} /></span>
         <div className="min-w-0 flex-1">
           <h1 className={`${ui.h1} break-words`}>{goal.title}</h1>
-          {goal.identity && <p className="text-sm text-stone-500">Each marble is a vote for: <strong>{goal.identity}</strong></p>}
-          {goal.intention && <p className="mt-1 text-sm text-stone-500">Plan: {goal.intention}</p>}
-          {goal.deadline && <p className="mt-1 text-sm text-stone-500">Deadline: {format(new Date(goal.deadline + 'T00:00'), 'PP')}</p>}
+          {goal.identity && <p className="mt-1 text-sm text-muted">Each marble is a vote for: <strong className="font-semibold text-ink">{goal.identity}</strong></p>}
+          {goal.intention && <p className="mt-1 text-sm text-muted">Plan: {goal.intention}</p>}
+          {goal.deadline && <p className="mt-1 text-sm text-muted">Deadline: {format(new Date(goal.deadline + 'T00:00'), 'PP')}</p>}
         </div>
-        <a href={href.editGoal(goal.id)} className={`${ui.btn} ${ui.secondary} py-1.5 text-sm`}>Edit</a>
+        <a href={href.editGoal(goal.id)} className={`${ui.btn} ${ui.secondary} py-1.5 pr-3 pl-2.5 text-sm`}>
+          <Pencil aria-hidden className="size-3.5" strokeWidth={1.75} />
+          Edit
+        </a>
       </header>
 
-      {goal.status === 'paused' && <p className={`${ui.card} text-sm`}>This goal is paused. Resume it whenever you're ready.</p>}
+      {goal.status === 'paused' && <p className={`${ui.card} text-sm text-muted`}>This goal is paused. Resume it whenever you're ready.</p>}
 
       {goal.type === 'habit' && <HabitSection goal={goal} />}
       {goal.type === 'project' && <ProjectSection goal={goal} />}
@@ -57,8 +64,8 @@ function HabitSection({ goal }: { goal: Goal }) {
     <section className={`${ui.card} flex items-center gap-4`}>
       <HabitCheck goal={goal} />
       <div>
-        <p className="font-medium">{doneToday ? 'Done today' : dueToday ? 'Due today' : 'Not scheduled today'}</p>
-        <p className="text-sm text-stone-500">
+        <p className="font-medium text-ink">{doneToday ? 'Done today' : dueToday ? 'Due today' : 'Not scheduled today'}</p>
+        <p className="text-sm text-muted">
           {describeSchedule(goal)}
           {weekly && ` · ${done}/${required} this week`}
         </p>
@@ -82,17 +89,17 @@ function ProjectSection({ goal }: { goal: Goal }) {
   return (
     <section className={ui.card}>
       <div className="mb-3 flex items-baseline justify-between">
-        <h2 className="font-semibold">Milestones</h2>
-        <span className="text-sm text-stone-500">{done}/{total}</span>
+        <h2 className="text-[15px] font-semibold tracking-tight">Milestones</h2>
+        <span className="text-sm text-muted tabular-nums">{done}/{total}</span>
       </div>
       <ProgressBar value={total ? done / total : 0} color={goal.color} />
       <ul className="mt-4 flex flex-col gap-3">
         {milestones.map((m, i) => (
-          <li key={m.id} className="flex items-center gap-2">
+          <li key={m.id} className="flex items-center gap-1">
             <div className="flex-1"><MilestoneCheck milestone={m} color={goal.color} /></div>
-            <button type="button" aria-label="Move up" disabled={i === 0} onClick={() => moveMilestone(m.id, -1)} className="px-1 text-stone-400 disabled:opacity-20">↑</button>
-            <button type="button" aria-label="Move down" disabled={i === milestones.length - 1} onClick={() => moveMilestone(m.id, 1)} className="px-1 text-stone-400 disabled:opacity-20">↓</button>
-            <button type="button" aria-label={`Delete ${m.title}`} onClick={() => deleteMilestone(m.id)} className="px-1 text-stone-400">✕</button>
+            <button type="button" aria-label="Move up" disabled={i === 0} onClick={() => moveMilestone(m.id, -1)} className="grid size-7 place-items-center rounded-lg text-faint transition hover:bg-sunken hover:text-ink outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-30"><ChevronUp aria-hidden className="size-4" strokeWidth={1.75} /></button>
+            <button type="button" aria-label="Move down" disabled={i === milestones.length - 1} onClick={() => moveMilestone(m.id, 1)} className="grid size-7 place-items-center rounded-lg text-faint transition hover:bg-sunken hover:text-ink outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-30"><ChevronDown aria-hidden className="size-4" strokeWidth={1.75} /></button>
+            <button type="button" aria-label={`Delete ${m.title}`} onClick={() => deleteMilestone(m.id)} className="grid size-7 place-items-center rounded-lg text-faint transition hover:bg-sunken hover:text-ink outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-30"><X aria-hidden className="size-4" strokeWidth={1.75} /></button>
           </li>
         ))}
       </ul>
@@ -112,8 +119,8 @@ function NumericSection({ goal }: { goal: Goal }) {
   const target = goal.target?.amount ?? 0
   return (
     <section className={ui.card}>
-      <p className="text-3xl font-bold">
-        {formatAmount(total)} <span className="text-base font-normal text-stone-500">/ {formatAmount(target)} {goal.target?.unit}</span>
+      <p className="font-display text-4xl font-medium tracking-tight tabular-nums">
+        {formatAmount(total)} <span className="font-sans text-base font-normal tracking-normal text-muted">/ {formatAmount(target)} {goal.target?.unit}</span>
       </p>
       <div className="my-3"><ProgressBar value={target ? total / target : 0} color={goal.color} /></div>
       <NumericLog goal={goal} />
@@ -127,14 +134,14 @@ function History({ goal }: { goal: Goal }) {
   if (!checkIns.length) return null
   return (
     <section>
-      <h2 className="mb-2 font-semibold">History</h2>
-      <ul className={`${ui.card} divide-y divide-stone-100 py-0 dark:divide-stone-800`}>
+      <h2 className="mb-2.5 text-[12px] font-semibold tracking-[0.12em] text-muted uppercase">History</h2>
+      <ul className={`${ui.card} divide-y divide-line py-0`}>
         {checkIns.map((c) => (
-          <li key={c.id} className="flex items-center justify-between py-2 text-sm">
-            <span>{format(new Date(c.at), 'EEE, MMM d · p')}</span>
+          <li key={c.id} className="flex items-center justify-between py-2.5 text-sm">
+            <span className="text-ink">{format(new Date(c.at), 'EEE, MMM d · p')}</span>
             <span className="flex items-center gap-3">
               {c.amount !== undefined && <span className="font-medium">+{formatAmount(c.amount)} {goal.target?.unit}</span>}
-              <button type="button" onClick={() => undoCheckIn(c.id)} className="text-stone-400 underline">Undo</button>
+              <button type="button" onClick={() => undoCheckIn(c.id)} className="rounded-md px-1.5 py-0.5 text-xs font-medium text-faint transition hover:bg-sunken hover:text-ink outline-none focus-visible:ring-2 focus-visible:ring-ring">Undo</button>
             </span>
           </li>
         ))}
@@ -145,7 +152,7 @@ function History({ goal }: { goal: Goal }) {
 
 function CompletePrompt({ goal, text }: { goal: Goal; text: string }) {
   return (
-    <div className="mt-4 flex items-center justify-between gap-3 rounded-xl bg-stone-100 p-3 dark:bg-stone-800">
+    <div className="mt-4 flex items-center justify-between gap-3 rounded-control bg-sunken p-3">
       <span className="font-medium">{text}</span>
       <button type="button" onClick={() => setGoalStatus(goal.id, 'completed')} className={`${ui.btn} ${ui.primary} py-1.5`}>Mark complete</button>
     </div>
@@ -160,12 +167,15 @@ function StatusActions({ goal }: { goal: Goal }) {
   }
 
   return (
-    <section className="flex flex-wrap gap-2 border-t border-stone-200 pt-5 dark:border-stone-800">
+    <section className="flex flex-wrap gap-2 border-t border-line pt-5">
       {goal.status === 'active' && <button type="button" className={`${ui.btn} ${ui.secondary}`} onClick={() => setGoalStatus(goal.id, 'paused')}>Pause</button>}
       {goal.status !== 'active' && <button type="button" className={`${ui.btn} ${ui.secondary}`} onClick={() => setGoalStatus(goal.id, 'active')}>{goal.status === 'paused' ? 'Resume' : 'Reactivate'}</button>}
       {goal.status !== 'completed' && <button type="button" className={`${ui.btn} ${ui.secondary}`} onClick={() => setGoalStatus(goal.id, 'completed')}>Complete</button>}
       {goal.status !== 'archived' && <button type="button" className={`${ui.btn} ${ui.secondary}`} onClick={() => setGoalStatus(goal.id, 'archived')}>Archive</button>}
-      <button type="button" className={`${ui.btn} ${ui.danger} ml-auto`} onClick={remove}>Delete</button>
+      <button type="button" className={`${ui.btn} ${ui.danger} ml-auto`} onClick={remove}>
+        <Trash2 aria-hidden className="size-4" strokeWidth={1.75} />
+        Delete
+      </button>
     </section>
   )
 }

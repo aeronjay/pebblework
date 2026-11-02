@@ -87,7 +87,7 @@ function GoalForm({ initial }: { initial?: Goal }) {
         <span className={ui.label}>Marble color</span>
         <div className="flex flex-wrap gap-2">
           {GOAL_COLORS.map((c) => (
-            <button key={c} type="button" aria-label={`Color ${c}`} aria-pressed={c === color} onClick={() => setColor(c)} className={`size-9 rounded-full ring-offset-2 ring-offset-stone-50 dark:ring-offset-stone-950 ${c === color ? 'ring-2 ring-stone-900 dark:ring-stone-100' : ''}`} style={{ background: `radial-gradient(circle at 35% 30%, #fff8, ${c} 45%)` }} />
+            <button key={c} type="button" aria-label={`Color ${c}`} aria-pressed={c === color} onClick={() => setColor(c)} className={`size-9 rounded-full ring-offset-2 ring-offset-canvas transition outline-none focus-visible:ring-2 focus-visible:ring-ring ${c === color ? 'ring-2 ring-ink' : ''}`} style={{ background: `radial-gradient(circle at 35% 30%, #fff8, ${c} 45%)` }} />
           ))}
         </div>
       </div>
@@ -101,7 +101,7 @@ function GoalForm({ initial }: { initial?: Goal }) {
             <button type="button" className={seg(schedule.kind === 'weekdays')} onClick={() => setSchedule({ kind: 'weekdays', days: [1, 3, 5] })}>Set days</button>
           </div>
           {schedule.kind === 'weekly' && (
-            <label className="mt-3 flex items-center gap-2 text-sm">
+            <label className="mt-3 flex items-center gap-2 text-sm text-muted">
               <input type="number" min={1} max={7} className={`${ui.input} w-20`} value={schedule.timesPerWeek} onChange={(e) => setSchedule({ kind: 'weekly', timesPerWeek: Math.min(7, Math.max(1, Number(e.target.value) || 1)) })} />
               times per week
             </label>
@@ -111,7 +111,7 @@ function GoalForm({ initial }: { initial?: Goal }) {
               {DAYS.map((d, i) => {
                 const on = schedule.days.includes(i)
                 return (
-                  <button key={i} type="button" aria-pressed={on} onClick={() => setSchedule({ kind: 'weekdays', days: on ? schedule.days.filter((x) => x !== i) : [...schedule.days, i].sort((a, b) => a - b) })} className={`size-9 rounded-full text-sm ${on ? 'bg-stone-900 text-white dark:bg-stone-100 dark:text-stone-900' : 'bg-stone-200 dark:bg-stone-800'}`}>
+                  <button key={i} type="button" aria-pressed={on} onClick={() => setSchedule({ kind: 'weekdays', days: on ? schedule.days.filter((x) => x !== i) : [...schedule.days, i].sort((a, b) => a - b) })} className={`size-9 rounded-full text-sm font-medium transition outline-none focus-visible:ring-2 focus-visible:ring-ring ${on ? 'bg-ink text-canvas' : 'bg-sunken text-muted hover:text-ink'}`}>
                     {d}
                   </button>
                 )
@@ -175,7 +175,7 @@ function GoalForm({ initial }: { initial?: Goal }) {
         <p className={ui.hint}>A concrete plan makes you far more likely to follow through.</p>
       </div>
 
-      {error && <p role="alert" className="text-sm text-red-600">{error}</p>}
+      {error && <p role="alert" className="text-sm text-danger-ink">{error}</p>}
 
       <div className="flex gap-2">
         <button type="button" className={`${ui.btn} ${ui.secondary}`} onClick={() => history.back()}>Cancel</button>

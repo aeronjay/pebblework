@@ -1,4 +1,5 @@
 import { isSameDay } from 'date-fns'
+import { Check } from 'lucide-react'
 import { useState, type FormEvent } from 'react'
 import type { Goal, Milestone } from '../../db/types'
 import { ui } from '../../ui/styles'
@@ -22,10 +23,10 @@ export function HabitCheck({ goal }: { goal: Goal }) {
       onClick={toggle}
       aria-pressed={doneToday}
       aria-label={doneToday ? `Undo ${goal.title} for today` : `Check in ${goal.title}`}
-      className="grid size-10 shrink-0 place-items-center rounded-full border-2 text-lg font-bold transition active:scale-90"
+      className="grid size-10 shrink-0 place-items-center rounded-full border-2 transition outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-surface active:scale-90"
       style={doneToday ? { background: goal.color, borderColor: goal.color, color: 'white' } : { borderColor: goal.color, color: goal.color }}
     >
-      {doneToday ? '✓' : ''}
+      {doneToday && <Check aria-hidden className="size-5" strokeWidth={2.25} />}
     </button>
   )
 }
@@ -69,7 +70,7 @@ export function MilestoneCheck({ milestone, color }: { milestone: Milestone; col
         className="size-5 shrink-0"
         style={{ accentColor: color }}
       />
-      <span className={done ? 'text-stone-400 line-through' : ''}>{milestone.title}</span>
+      <span className={`text-[15px] ${done ? 'text-faint line-through' : 'text-ink'}`}>{milestone.title}</span>
     </label>
   )
 }
