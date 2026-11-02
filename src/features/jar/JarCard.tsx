@@ -1,4 +1,5 @@
 import { useLiveQuery } from 'dexie-react-hooks'
+import { PartyPopper, Sparkles } from 'lucide-react'
 import { useMemo } from 'react'
 import { db, getSettings } from '../../db/db'
 import type { MarbleEvent } from '../../db/types'
@@ -32,11 +33,20 @@ export function JarCard() {
         onDrop={() => settings.haptics && buzz()}
         onImpact={(speed) => settings.sound && clink(speed)}
       />
-      <p className="text-lg font-semibold tabular-nums">
-        {count} <span className="font-normal text-stone-400">/ {capacity}</span>
+      <p className="font-display text-[28px] leading-none font-medium tracking-tight text-ink tabular-nums">
+        {count} <span className="font-sans text-base font-normal tracking-normal text-faint">/ {capacity}</span>
       </p>
-      <p className="h-5 text-sm text-stone-500">
-        {toGo <= 0 ? 'Jar full! 🎉' : count / capacity >= ALMOST_FULL ? `Only ${toGo} to go` : count === 0 ? 'Your first win drops the first marble' : ''}
+      <p className="flex h-5 items-center gap-1.5 text-[13px] text-muted">
+        {toGo <= 0 ? (
+          <>
+            <PartyPopper aria-hidden className="size-4 text-mq-ink" strokeWidth={1.75} />
+            Jar full!
+          </>
+        ) : count / capacity >= ALMOST_FULL ? (
+          `Only ${toGo} to go`
+        ) : count === 0 ? (
+          'Your first win drops the first marble'
+        ) : null}
       </p>
       <LatestDrop marbles={marbles} />
     </div>
@@ -62,13 +72,18 @@ function LatestDrop({ marbles }: { marbles: MarbleEvent[] }) {
   const special = group.find((m) => m.rarity !== 'normal')?.rarity
 
   return (
-    <div key={last.id} className="w-full rounded-xl bg-stone-100 px-3 py-2 text-center text-sm dark:bg-stone-900">
+    <div key={last.id} className="w-full rounded-control border border-line bg-surface px-3 py-2.5 text-center text-[13px] text-muted shadow-card">
       <p>
-        <span className="font-semibold">+{group.length}</span> · {REASONS[last.reason]}
+        <span className="font-semibold text-ink tabular-nums">+{group.length}</span> · {REASONS[last.reason]}
         {goal && <> · {goal.title}</>}
       </p>
-      {goal?.identity && <p className="text-stone-500">A vote for: {goal.identity}</p>}
-      {special && <p className="font-semibold text-amber-600">{special === 'mythic' ? '🌈 Mythic marble!' : '✨ Golden marble!'}</p>}
+      {goal?.identity && <p className="text-faint">A vote for: {goal.identity}</p>}
+      {special && (
+        <p className={`mt-0.5 inline-flex items-center gap-1 font-semibold ${special === 'mythic' ? 'text-sq-ink' : 'text-mq-ink'}`}>
+          <Sparkles aria-hidden className="size-3.5" strokeWidth={1.75} />
+          {special === 'mythic' ? 'Mythic marble!' : 'Golden marble!'}
+        </p>
+      )}
     </div>
   )
 }

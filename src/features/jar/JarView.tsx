@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react'
 import { drawJar } from './draw'
+import { prefersDark } from './palette'
 import { JarSim, WORLD, type SimMarble } from './sim'
 
 interface Props {
@@ -13,10 +14,6 @@ const DROP_STAGGER_MS = 140
 
 function prefersReducedMotion() {
   return window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false
-}
-
-function prefersDark() {
-  return window.matchMedia?.('(prefers-color-scheme: dark)').matches ?? false
 }
 
 export function JarView({ capacity, marbles, onDrop, onImpact }: Props) {
