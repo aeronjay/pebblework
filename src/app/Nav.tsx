@@ -117,7 +117,7 @@ export function SideNav({ route }: { route: Route }) {
       >
         <a href={href.home} aria-label="Marble Jar, home" className={`mb-7 flex h-10 items-center gap-3 rounded-control ${focus}`}>
           <span className="grid size-10 shrink-0 place-items-center">
-            <LogoMark className="size-[34px] drop-shadow-[0_1px_2px_rgb(0_0_0/0.12)]" />
+            <LogoMark className="size-[34px]" />
           </span>
           <Label expanded={expanded} className="font-display text-[17px] font-semibold text-ink">
             Marble Jar
@@ -149,12 +149,10 @@ function RailItem({ tab, active, expanded, onHover, onUnhover }: RailItemProps) 
           // Collapsed, the rail is canvas, so a raised white pill reads. Expanded, the rail is itself an elevated
           // (white) panel, so the pill turns into a tinted wash instead of vanishing.
           className={`absolute inset-0 rounded-control ring-1 transition-[background-color,box-shadow] duration-200 ${
-            expanded ? 'bg-ink/[0.065] shadow-none ring-line dark:bg-white/[0.075]' : 'bg-surface shadow-card ring-line'
+            expanded ? 'bg-ink/[0.065] ring-transparent dark:bg-white/[0.075]' : 'bg-surface ring-line'
           }`}
           transition={{ type: 'spring', bounce: 0.15, duration: 0.45 }}
-        >
-          <span className="absolute top-1/2 -left-3 h-5 w-[3px] -translate-y-1/2 rounded-r-full bg-[var(--color-mq)]" />
-        </motion.span>
+        />
       )}
       <a
         href={tab.to}

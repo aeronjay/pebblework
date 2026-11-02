@@ -195,9 +195,7 @@ function Sheet({ target, todayKey, onClose }: { target: SheetTarget; todayKey: s
         <form onSubmit={save} className="flex min-h-0 flex-1 flex-col">
           <div className="flex items-center justify-between gap-3 px-5 pt-5 pb-1 sm:px-6">
             <h2 id={titleId} className="flex items-center gap-2.5 text-[13px] font-semibold text-muted">
-              <span className="grid size-6 place-items-center rounded-[8px] transition-colors" style={{ backgroundColor: meta.soft, color: meta.ink }}>
-                <meta.Icon aria-hidden className="size-3.5" strokeWidth={1.75} />
-              </span>
+              <meta.Icon aria-hidden className="size-6" />
               {q ? `Edit ${noun}` : `New ${noun}`}
             </h2>
             <button

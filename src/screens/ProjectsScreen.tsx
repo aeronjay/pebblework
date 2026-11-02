@@ -19,7 +19,7 @@ export function ProjectsScreen() {
   )
 }
 
-const primary = ui.quest
+const primary = ui.cta
 
 function Projects() {
   const todayKey = dayKey(useToday())
@@ -55,7 +55,7 @@ function Projects() {
           <p className="text-[15px] font-semibold text-muted">
             {all ? (all.length ? `${open} open, ${all.length - open} completed` : 'Boards') : ' '}
           </p>
-          <h1 className="mt-1.5 font-display text-[34px] leading-[1.05] font-medium text-ink md:text-[40px]">
+          <h1 className="mt-1.5 font-display text-[34px] leading-[1.05] font-medium tracking-[-0.025em] text-ink md:text-[42px]">
             Projects
           </h1>
           <p className="mt-2 max-w-[52ch] text-[14px] text-muted">Big quests, broken into stages. Every stage you finish earns a stone.</p>
@@ -63,7 +63,7 @@ function Projects() {
         <button type="button" onClick={create} aria-keyshortcuts="N" className={primary}>
           <Plus aria-hidden className="size-4" strokeWidth={2} />
           New project
-          <kbd className={ui.questKbd}>N</kbd>
+          <kbd className={ui.ctaKbd}>N</kbd>
         </button>
       </header>
 

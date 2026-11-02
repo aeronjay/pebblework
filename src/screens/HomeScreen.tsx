@@ -45,7 +45,7 @@ function Home() {
         <header className="mb-6 flex flex-wrap items-end justify-between gap-x-6 gap-y-4 md:mb-8">
           <div className="min-w-0">
             <p className="text-[15px] font-semibold text-muted">{format(today, 'EEEE, MMMM d')}</p>
-            <h1 className="mt-1.5 font-display text-[34px] leading-[1.05] font-medium text-ink md:text-[40px]">
+            <h1 className="mt-1.5 font-display text-[34px] leading-[1.05] font-medium tracking-[-0.025em] text-ink md:text-[42px]">
               Today’s quests
             </h1>
             <div className="mt-3 h-[26px]">{quests && <SummaryChip today={quests} />}</div>
@@ -54,11 +54,11 @@ function Home() {
             type="button"
             onClick={() => setSheet({ mode: 'create', category: 'dq' })}
             aria-keyshortcuts="N"
-            className={ui.quest}
+            className={ui.cta}
           >
             <Plus aria-hidden className="size-4" strokeWidth={2} />
             New quest
-            <kbd className={ui.questKbd}>N</kbd>
+            <kbd className={ui.ctaKbd}>N</kbd>
           </button>
         </header>
 

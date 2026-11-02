@@ -178,7 +178,7 @@ export function QuestCalendar() {
   }
 
   return (
-    <section aria-labelledby="qc-title" className="rounded-card border border-line bg-surface p-4 shadow-card sm:p-5">
+    <section aria-labelledby="qc-title" className="rounded-card border border-line bg-surface p-4 shadow-card sm:p-5 lg:p-4">
       <div className="mx-auto max-w-[480px]">
         {/* Header */}
         <div className="flex items-start justify-between gap-3">

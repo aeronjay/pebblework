@@ -5,83 +5,84 @@
 
 /* `static` emits every token even if no utility uses it: meta.ts reads var(--color-dq) etc. from JS. */
 @theme static {
-  /* A quest log, not a notebook: rounded Nunito for reading, a pixel face (RPG quest-log nod) only for titles and counters. */
-  --font-sans: 'Nunito Variable', ui-rounded, ui-sans-serif, system-ui, sans-serif;
-  --font-display: 'Pixelify Sans Variable', 'Nunito Variable', ui-sans-serif, system-ui, sans-serif;
+  /* One family throughout: Geologica, a calm grotesque with a slightly mineral cut. Headings use weight and size, not a
+     second face. */
+  --font-sans: 'Geologica Variable', ui-sans-serif, system-ui, sans-serif;
+  --font-display: 'Geologica Variable', ui-sans-serif, system-ui, sans-serif;
 
-  --color-jar: oklch(0.97 0.01 270 / 0.35);
+  --color-jar: oklch(0.97 0.01 160 / 0.35);
 
-  /* Surfaces (light "dawn": cool periwinkle mist; dark overrides below are "night camp" indigo) */
-  --color-canvas: #e9ecf7;
-  --color-surface: #ffffff;
-  --color-elevated: #ffffff;
-  --color-sunken: #dfe3f3;
-  --color-line: rgb(26 31 61 / 0.09);
-  --color-line-strong: rgb(26 31 61 / 0.17);
-  --color-ink: #1a1f3d;
-  --color-muted: #535a84;
-  --color-faint: #5f6590;
-  --color-ring: oklch(0.62 0.14 62); /* = mq-deep: topaz, but ≥3:1 on canvas and white */
+  /* "Riverbed", light: pale wet slate, frosted-glass surfaces, deep slate-green ink. */
+  --color-canvas: #e3e8e4;
+  --color-surface: #f5f7f4;
+  --color-elevated: #fbfcfa;
+  --color-sunken: #d8dfda;
+  --color-line: rgb(30 43 40 / 0.1);
+  --color-line-strong: rgb(30 43 40 / 0.2);
+  --color-ink: #1e2b28;
+  --color-muted: #52605b;
+  --color-faint: #5c6964;
+  --color-ring: #3a6888;
 
-  /* Quest categories are gems: emerald (daily), topaz (main), amethyst (side). Base, tint, readable text on the tint. */
-  --color-dq: oklch(0.7 0.15 162);
-  --color-dq-soft: oklch(0.7 0.15 162 / 0.14);
-  --color-dq-ink: oklch(0.44 0.11 162);
-  --color-mq: oklch(0.8 0.15 78);
-  --color-mq-soft: oklch(0.8 0.15 78 / 0.18);
-  --color-mq-ink: oklch(0.47 0.11 62);
-  --color-mq-deep: oklch(0.62 0.14 62);
-  --color-sq: oklch(0.66 0.17 295);
-  --color-sq-soft: oklch(0.66 0.17 295 / 0.14);
-  --color-sq-ink: oklch(0.46 0.16 295);
+  /* Quest types are the stones they drop: river blue (daily), ochre (main), rose quartz (side).
+     Base, tint, and readable text on the tint. */
+  --color-dq: #4c7b9e;
+  --color-dq-soft: rgb(76 123 158 / 0.14);
+  --color-dq-ink: #2d5570;
+  --color-mq: #c08a2e;
+  --color-mq-soft: rgb(192 138 46 / 0.16);
+  --color-mq-ink: #74501a;
+  --color-sq: #b86f84;
+  --color-sq-soft: rgb(184 111 132 / 0.15);
+  --color-sq-ink: #85405a;
 
   /* Destructive actions and errors */
-  --color-danger: oklch(0.6 0.19 25);
-  --color-danger-soft: oklch(0.6 0.19 25 / 0.1);
-  --color-danger-ink: oklch(0.5 0.17 25);
+  --color-danger: oklch(0.58 0.17 28);
+  --color-danger-soft: oklch(0.58 0.17 28 / 0.1);
+  --color-danger-ink: oklch(0.48 0.15 28);
 
-  --radius-card: 18px;
-  --radius-control: 10px;
+  /* Radius follows hierarchy: panels, then controls, then chips. */
+  --radius-card: 14px;
+  --radius-control: 8px;
   --radius-chip: 999px;
 
-  /* Game-panel ledge: a hard 2px base under a soft lift, so panels read as tiles you could press. */
-  --shadow-card: 0 2px 0 rgb(26 31 61 / 0.07), 0 8px 18px -10px rgb(26 31 61 / 0.18);
-  --shadow-pop: 0 2px 0 rgb(26 31 61 / 0.08), 0 12px 28px -8px rgb(26 31 61 / 0.22), 0 28px 56px -16px rgb(26 31 61 / 0.2);
+  /* Panels sit flat on the page, separated by a hairline; only floating things (menus, dialogs) cast a shadow. */
+  --shadow-card: 0 0 0 0 transparent;
+  --shadow-pop: 0 1px 2px rgb(30 43 40 / 0.08), 0 12px 32px -8px rgb(30 43 40 / 0.22);
 
   --ease-out-soft: cubic-bezier(0.22, 1, 0.36, 1);
 }
 
-/* Unlayered, so it beats Tailwind's @layer theme defaults. Matches the `dark:` variant (data-theme). */
+/* Unlayered, so it beats Tailwind's @layer theme defaults. Matches the `dark:` variant (data-theme).
+   "Riverbed", dark: stone under water at dusk, green-tinted rather than neutral black. */
 :root[data-theme='dark'] {
-  --color-canvas: #161a33;
-  --color-surface: #1e2342;
-  --color-elevated: #262b4f;
-  --color-sunken: #12152b;
-  --color-line: rgb(200 208 255 / 0.08);
-  --color-line-strong: rgb(200 208 255 / 0.16);
-  --color-ink: #edefff;
-  --color-muted: #a3a9d3;
-  --color-faint: #8b91bd;
-  --color-ring: oklch(0.82 0.14 80);
-  --color-jar: oklch(0.9 0.03 270 / 0.2);
+  --color-canvas: #151c1a;
+  --color-surface: #1c2523;
+  --color-elevated: #24302d;
+  --color-sunken: #111715;
+  --color-line: rgb(214 230 222 / 0.09);
+  --color-line-strong: rgb(214 230 222 / 0.18);
+  --color-ink: #e2e9e5;
+  --color-muted: #a2afa9;
+  --color-faint: #8d9a94;
+  --color-ring: #8db5d0;
+  --color-jar: oklch(0.9 0.02 160 / 0.2);
 
-  --color-dq: oklch(0.76 0.14 162);
-  --color-dq-soft: oklch(0.76 0.14 162 / 0.15);
-  --color-dq-ink: oklch(0.87 0.1 162);
-  --color-mq: oklch(0.82 0.15 80);
-  --color-mq-soft: oklch(0.82 0.15 80 / 0.15);
-  --color-mq-ink: oklch(0.89 0.11 82);
-  --color-mq-deep: oklch(0.6 0.13 62);
-  --color-sq: oklch(0.73 0.15 295);
-  --color-sq-soft: oklch(0.73 0.15 295 / 0.18);
-  --color-sq-ink: oklch(0.86 0.1 295);
+  --color-dq: #7fa8c6;
+  --color-dq-soft: rgb(127 168 198 / 0.16);
+  --color-dq-ink: #b8d2e5;
+  --color-mq: #d6a552;
+  --color-mq-soft: rgb(214 165 82 / 0.16);
+  --color-mq-ink: #ebcd93;
+  --color-sq: #d297a8;
+  --color-sq-soft: rgb(210 151 168 / 0.17);
+  --color-sq-ink: #ecc3cf;
 
-  --color-danger: oklch(0.7 0.17 25);
-  --color-danger-soft: oklch(0.7 0.17 25 / 0.14);
-  --color-danger-ink: oklch(0.82 0.1 25);
+  --color-danger: oklch(0.7 0.15 28);
+  --color-danger-soft: oklch(0.7 0.15 28 / 0.14);
+  --color-danger-ink: oklch(0.82 0.09 28);
 
-  --shadow-card: inset 0 1px 0 rgb(255 255 255 / 0.05), 0 2px 0 rgb(6 8 24 / 0.45), 0 10px 24px -10px rgb(6 8 24 / 0.7);
-  --shadow-pop: inset 0 1px 0 rgb(255 255 255 / 0.07), 0 2px 0 rgb(6 8 24 / 0.5), 0 18px 44px -10px rgb(6 8 24 / 0.75);
+  --shadow-pop: inset 0 1px 0 rgb(255 255 255 / 0.05), 0 16px 40px -10px rgb(0 0 0 / 0.6);
 }
 
 :root {

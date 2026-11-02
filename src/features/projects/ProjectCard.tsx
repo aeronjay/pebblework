@@ -27,20 +27,12 @@ export function ProjectCard({ project, todayKey }: { project: ProjectSummary; to
     <a
       href={href.board(quest.id)}
       aria-label={`${quest.title}, ${meta.label} project, ${stagesLabel(done, total)}${complete ? ', completed' : ''}. Open board`}
-      className="group/card relative flex min-h-[236px] flex-col overflow-hidden rounded-card border border-line bg-surface p-5 shadow-card transition duration-200 ease-out-soft outline-none hover:-translate-y-0.5 hover:shadow-pop focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-canvas motion-reduce:transition-none motion-reduce:hover:translate-y-0"
+      className="group/card relative flex min-h-[236px] flex-col overflow-hidden rounded-card border border-line bg-surface p-5 shadow-card transition-colors duration-200 ease-out-soft outline-none hover:border-line-strong focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-canvas"
     >
-      {/* Category wash at the top edge. */}
-      <span
-        aria-hidden
-        className={`pointer-events-none absolute inset-x-0 top-0 h-28 transition-opacity duration-300 ${complete ? 'opacity-50' : 'opacity-100'}`}
-        style={{ background: `linear-gradient(180deg, ${meta.soft}, transparent)` }}
-      />
 
       <div className="relative flex items-center justify-between gap-3">
         <span className="flex min-w-0 items-center gap-2.5">
-          <span className="grid size-8 shrink-0 place-items-center rounded-[10px] bg-surface shadow-card" style={{ color: meta.ink }}>
-            <meta.Icon aria-hidden className="size-4" strokeWidth={1.75} />
-          </span>
+          <meta.Icon aria-hidden className="size-6 shrink-0" />
           <span className="truncate text-[13px] font-bold" style={{ color: meta.ink }}>
             {meta.label}
           </span>

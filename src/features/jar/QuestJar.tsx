@@ -330,7 +330,7 @@ export function QuestJar() {
 
   return (
     <MotionConfig reducedMotion="user">
-      <section aria-labelledby="quest-jar-title" className="scroll-mt-6 scroll-mb-24 rounded-card border border-line bg-surface bg-[radial-gradient(120%_70%_at_50%_0%,var(--color-sq-soft),transparent_70%)] p-5 shadow-card md:scroll-mb-6 lg:flex lg:flex-1 lg:flex-col">
+      <section aria-labelledby="quest-jar-title" className="scroll-mt-6 scroll-mb-24 rounded-card border border-line bg-surface p-5 shadow-card md:scroll-mb-6 lg:p-4 lg:flex lg:flex-1 lg:flex-col">
         <header className="flex items-center justify-between gap-3">
           <div>
             <h2 id="quest-jar-title" className="text-[15px] font-semibold tracking-tight text-ink">
@@ -395,6 +395,8 @@ export function QuestJar() {
             className="relative block w-full cursor-pointer select-none"
             style={{ aspectRatio: `${WORLD.width} / ${WORLD.height}` }}
           />
+          {/* The sill the jar stands on: a ledge drawn at the glass's base (6% of the width up from the canvas bottom). */}
+          <div aria-hidden className="relative -mx-[4%] -mt-[5.5%] h-[2px] rounded-full bg-line-strong" />
           <AnimatePresence>
             {celebration && (
               <motion.div
@@ -421,7 +423,7 @@ export function QuestJar() {
         </div>
         </div>
 
-        <div className="lg:flex lg:w-[200px] lg:shrink-0 lg:flex-col lg:justify-center">
+        <div className="lg:flex lg:w-[212px] lg:shrink-0 lg:flex-col lg:justify-center">
         <div className="mt-3 flex items-end justify-between gap-3 lg:mt-0">
           <p className="font-display leading-none text-ink tabular-nums" aria-label={`${weight} of ${capacity}`}>
             <span className="text-[34px] font-semibold">{weight}</span>
@@ -453,7 +455,7 @@ export function QuestJar() {
           {byCat.map(({ c, n }) => (
             <li
               key={c}
-              className={`inline-flex items-center gap-1.5 rounded-chip px-2.5 py-1 text-xs font-bold lg:px-2 ${CHIP[c].chip}`}
+              className={`inline-flex items-center gap-1.5 rounded-chip px-2.5 py-1 text-xs font-medium lg:px-2 ${CHIP[c].chip}`}
               title={CATEGORY[c].label}
               aria-label={`${CATEGORY[c].label}: ${n}`}
             >

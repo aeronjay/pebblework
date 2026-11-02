@@ -71,15 +71,11 @@ export function QuestSection({ category, items, todayKey, claimed, open, onToggl
           onClick={onToggle}
           className="group/head flex w-full items-center gap-3.5 rounded-card px-4 py-3.5 text-left outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset sm:px-5"
         >
-          <span className="grid size-10 shrink-0 place-items-center rounded-[12px]" style={{ backgroundColor: meta.soft, color: meta.ink }}>
-            <meta.Icon aria-hidden className="size-[19px]" strokeWidth={1.75} />
-          </span>
+          <meta.Icon aria-hidden className="size-9 shrink-0" />
           <span className="min-w-0 flex-1">
             <span className="flex items-baseline gap-2">
               <span className="text-[15px] font-semibold tracking-tight text-ink">{meta.label}</span>
-              <span className="rounded-md px-1.5 py-px text-[10.5px] font-semibold tracking-[0.08em]" style={{ backgroundColor: meta.soft, color: meta.ink }}>
-                {meta.short}
-              </span>
+              <span className="text-[12px] font-medium text-faint">{meta.short}</span>
             </span>
             <span className="mt-0.5 block text-[13px] leading-snug text-faint sm:truncate">{meta.blurb}</span>
           </span>
@@ -209,12 +205,7 @@ function EmptyState({ category, onAdd }: { category: QuestCategory; onAdd: () =>
   const copy = EMPTY[category]
   return (
     <div className="flex flex-col items-center px-6 pt-7 pb-6 text-center">
-      <span
-        className="grid size-11 place-items-center rounded-full ring-8"
-        style={{ backgroundColor: meta.soft, color: meta.ink, ['--tw-ring-color' as string]: `color-mix(in oklab, ${meta.color} 6%, transparent)` }}
-      >
-        <meta.Icon aria-hidden className="size-5" strokeWidth={1.75} />
-      </span>
+      <meta.Icon aria-hidden className="size-12" />
       <p className="mt-4 font-display text-[17px] font-medium text-ink">{copy.title}</p>
       <p className="mt-1 max-w-[30ch] text-[13px] leading-relaxed text-muted">{copy.body}</p>
       <button

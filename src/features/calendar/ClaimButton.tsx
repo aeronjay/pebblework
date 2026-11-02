@@ -20,7 +20,7 @@ export function ClaimButton({ days, weight, busy, onClaim, ref }: Props) {
         ref={ref}
         type="button"
         disabled
-        className="flex h-11 w-full cursor-default items-center justify-between rounded-[14px] border border-line bg-sunken/60 px-4 text-[13px] text-muted"
+        className="flex h-11 w-full cursor-default items-center justify-between rounded-control border border-line bg-sunken/60 px-4 text-[13px] text-muted"
       >
         <span className="flex items-center gap-2 font-medium whitespace-nowrap">
           <Gem size={15} strokeWidth={1.75} className="text-faint" />
@@ -39,9 +39,9 @@ export function ClaimButton({ days, weight, busy, onClaim, ref }: Props) {
       aria-label={busy ? 'Claiming' : copy.aria}
       aria-busy={busy}
       disabled={busy}
-      className="qc-claim group block w-full rounded-[14px] p-[1.5px] shadow-pop transition-transform duration-150 ease-out-soft hover:-translate-y-px focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring active:translate-y-0 active:scale-[.985] disabled:cursor-progress"
+      className="qc-claim group block w-full rounded-control transition-opacity duration-150 hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring active:translate-y-0 active:scale-[.985] disabled:cursor-progress"
     >
-      <span className="qc-claim-core flex h-11 items-center justify-between rounded-[12.5px] bg-ink px-4 text-[13.5px] font-semibold text-canvas">
+      <span className="qc-claim-core flex h-11 items-center justify-between rounded-control bg-ink px-4 text-[14px] font-medium text-canvas">
         <span className="flex items-center gap-2">
           {busy ? (
             <LoaderCircle size={16} strokeWidth={2} className="qc-spin" />

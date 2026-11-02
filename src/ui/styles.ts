@@ -10,10 +10,9 @@ export const ui = {
   danger: 'bg-danger-soft text-danger-ink hover:brightness-95',
   card: 'rounded-card border border-line bg-surface p-4 shadow-card',
   h1: 'font-display text-2xl font-semibold',
-  // The one loud button per screen ("New quest", "New project"): a topaz gem key that presses down onto its ledge.
-  quest:
-    'inline-flex items-center gap-2 rounded-control bg-mq py-2.5 pr-3 pl-3.5 text-[15px] font-extrabold text-[#2a1d05] shadow-[0_3px_0_var(--color-mq-deep)] transition-[transform,box-shadow,filter] hover:brightness-105 active:translate-y-[3px] active:shadow-none outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-canvas',
-  questKbd: 'ml-1 hidden rounded-[5px] border border-[#2a1d05]/25 px-1.5 font-sans text-[11px] font-bold text-[#2a1d05]/70 md:inline',
+  // The one main action per screen ("New quest", "New project"): solid ink, quiet everywhere else.
+  cta: 'inline-flex items-center gap-2 rounded-control bg-ink py-2.5 pr-3 pl-3.5 text-[14px] font-medium text-canvas transition-opacity hover:opacity-90 outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-canvas',
+  ctaKbd: 'ml-1 hidden rounded-[4px] border border-canvas/25 px-1.5 font-sans text-[11px] text-canvas/70 md:inline',
 }
 
 export function seg(active: boolean) {

@@ -1,5 +1,5 @@
-import { Compass, Crown, Sunrise, type LucideIcon } from 'lucide-react'
 import type { QuestCategory } from '../../db/types'
+import { PEBBLE, type PebbleIcon } from './components/Pebble'
 
 export { CATEGORY_ORDER } from './day'
 
@@ -7,7 +7,7 @@ export interface CategoryMeta {
   short: 'DQ' | 'MQ' | 'SQ'
   label: string
   blurb: string
-  Icon: LucideIcon
+  Icon: PebbleIcon // the category's stone
   color: string // css var(), for inline styles / canvas lookups
   soft: string
   ink: string
@@ -19,7 +19,7 @@ export const CATEGORY: Record<QuestCategory, CategoryMeta> = {
     short: 'DQ',
     label: 'Daily Quest',
     blurb: 'Rituals that reset every morning.',
-    Icon: Sunrise,
+    Icon: PEBBLE.dq,
     color: 'var(--color-dq)',
     soft: 'var(--color-dq-soft)',
     ink: 'var(--color-dq-ink)',
@@ -28,7 +28,7 @@ export const CATEGORY: Record<QuestCategory, CategoryMeta> = {
     short: 'MQ',
     label: 'Main Quest',
     blurb: 'The big moves that shape the story.',
-    Icon: Crown,
+    Icon: PEBBLE.mq,
     color: 'var(--color-mq)',
     soft: 'var(--color-mq-soft)',
     ink: 'var(--color-mq-ink)',
@@ -37,7 +37,7 @@ export const CATEGORY: Record<QuestCategory, CategoryMeta> = {
     short: 'SQ',
     label: 'Side Quest',
     blurb: 'Errands and detours, if time allows.',
-    Icon: Compass,
+    Icon: PEBBLE.sq,
     color: 'var(--color-sq)',
     soft: 'var(--color-sq-soft)',
     ink: 'var(--color-sq-ink)',
