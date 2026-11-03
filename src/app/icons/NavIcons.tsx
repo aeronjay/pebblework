@@ -77,3 +77,48 @@ export function LogoMark({ className }: { className?: string }) {
     </svg>
   )
 }
+
+// Review: looking back. An arrow circling round to a resting stone.
+export function ReviewIcon(props: NavIconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M4.6 9.2A8 8 0 1 1 4 12.6" />
+      <path d="M4.2 4.8v4.6h4.6" />
+      <path d="M9.6 13.6c0-1.2 1.1-2 2.5-2s2.4.8 2.4 1.9-1.1 1.8-2.5 1.8-2.4-.6-2.4-1.7z" />
+    </Svg>
+  )
+}
+
+// Shelf: two filled jars standing on a plank.
+export function ShelfIcon(props: NavIconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M3 19.5h18" />
+      <path d="M5.5 7h4M6 7v1.4c-.8.6-1.3 1.5-1.3 2.6v6.2c0 .7.6 1.3 1.3 1.3h3c.7 0 1.3-.6 1.3-1.3V11c0-1.1-.5-2-1.3-2.6V7" />
+      <path d="M14.5 10h4M15 10v1c-.8.5-1.3 1.3-1.3 2.3v3.9c0 .7.6 1.3 1.3 1.3h3c.7 0 1.3-.6 1.3-1.3v-3.9c0-1-.5-1.8-1.3-2.3v-1" />
+      <path d="M4.8 14.6h5.4M13.8 15.4h5.4" />
+    </Svg>
+  )
+}
+
+// Insights: a trail climbing a ridge, the sun over it.
+export function InsightsIcon(props: NavIconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M3 19.5 8.6 11l3.3 4.3 3.4-5.8 5.7 10" />
+      <circle cx="17.6" cy="5.4" r="1.9" />
+    </Svg>
+  )
+}
+
+// Identity: a sprout, who you're growing into.
+export function IdentityIcon(props: NavIconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M12 20.5v-9" />
+      <path d="M12 13.2c0-3.6-2.4-5.8-6.6-5.8 0 3.7 2.5 5.8 6.6 5.8z" />
+      <path d="M12 11.5c0-3.3 2.2-5.6 6.4-5.6 0 3.4-2.3 5.6-6.4 5.6z" />
+      <path d="M8 20.5h8" />
+    </Svg>
+  )
+}

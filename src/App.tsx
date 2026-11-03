@@ -4,9 +4,13 @@ import { useRoute, type Route } from './app/router'
 import { useThemeSync } from './app/theme'
 import { BoardScreen } from './screens/BoardScreen'
 import { HomeScreen } from './screens/HomeScreen'
+import { IdentityScreen } from './screens/IdentityScreen'
+import { InsightsScreen } from './screens/InsightsScreen'
 import { NotesScreen } from './screens/NotesScreen'
 import { ProjectsScreen } from './screens/ProjectsScreen'
+import { ReviewScreen } from './screens/ReviewScreen'
 import { SettingsScreen } from './screens/SettingsScreen'
+import { ShelfScreen } from './screens/ShelfScreen'
 
 function Screen({ route }: { route: Route }) {
   switch (route.name) {
@@ -20,11 +24,19 @@ function Screen({ route }: { route: Route }) {
       return <BoardScreen id={route.id} />
     case 'notes':
       return <NotesScreen />
+    case 'review':
+      return <ReviewScreen />
+    case 'shelf':
+      return <ShelfScreen />
+    case 'insights':
+      return <InsightsScreen />
+    case 'identity':
+      return <IdentityScreen />
   }
 }
 
 // shell: Home lays itself out edge to edge (a no-scroll app shell on big screens). full: boards use the whole width
-// (they scroll their columns sideways). roomy: the projects grid and notes. narrow: forms and lists.
+// (they scroll their columns sideways). roomy: the projects grid, notes, the shelf and insights. narrow: forms and lists.
 type Layout = 'shell' | 'full' | 'roomy' | 'narrow'
 
 const LAYOUT: Record<Layout, string> = {
@@ -37,7 +49,7 @@ const LAYOUT: Record<Layout, string> = {
 function layoutOf(route: Route): Layout {
   if (route.name === 'home') return 'shell'
   if (route.name === 'board') return 'full'
-  if (route.name === 'projects' || route.name === 'notes') return 'roomy'
+  if (route.name === 'projects' || route.name === 'notes' || route.name === 'shelf' || route.name === 'insights') return 'roomy'
   return 'narrow'
 }
 

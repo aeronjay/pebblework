@@ -34,7 +34,7 @@ describe('backup', () => {
     await source.stones.add({ id: 's1', jarId: 'j1', dayKey: '2026-11-01', category: 'dq', weight: 1, rarity: 'normal', at: meta.createdAt, ...meta })
 
     const backup = parseBackup(JSON.stringify(await exportBackup(source)))
-    expect(backup.schemaVersion).toBe(5)
+    expect(backup.schemaVersion).toBe(6)
     const target = freshDb()
     await importBackup(backup, target)
     expect(await target.quests.count()).toBe(1)

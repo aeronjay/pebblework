@@ -1,6 +1,17 @@
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
-import { useEffect, useRef, useState, type ComponentType, type FocusEvent, type PointerEvent, type ReactNode } from 'react'
-import { HomeIcon, LogoMark, NotesIcon, ProjectsIcon, SettingsIcon, type NavIconProps } from './icons/NavIcons'
+import { useEffect, useId, useRef, useState, type ComponentType, type FocusEvent, type PointerEvent, type ReactNode } from 'react'
+import {
+  HomeIcon,
+  IdentityIcon,
+  InsightsIcon,
+  LogoMark,
+  NotesIcon,
+  ProjectsIcon,
+  ReviewIcon,
+  SettingsIcon,
+  ShelfIcon,
+  type NavIconProps,
+} from './icons/NavIcons'
 import { href, type Route } from './router'
 
 interface Tab {
@@ -14,8 +25,18 @@ const TABS: Tab[] = [
   { label: 'Home', to: href.home, match: ['home'], Icon: HomeIcon },
   { label: 'Projects', to: href.projects, match: ['projects', 'board'], Icon: ProjectsIcon },
   { label: 'Notes', to: href.notes, match: ['notes'], Icon: NotesIcon },
+  { label: 'Review', to: href.review, match: ['review'], Icon: ReviewIcon },
+  { label: 'Shelf', to: href.shelf, match: ['shelf'], Icon: ShelfIcon },
+  { label: 'Insights', to: href.insights, match: ['insights'], Icon: InsightsIcon },
+  { label: 'Identity', to: href.identity, match: ['identity'], Icon: IdentityIcon },
+  // Keep Settings last: the rail pins it to the bottom.
   { label: 'Settings', to: href.settings, match: ['settings'], Icon: SettingsIcon },
 ]
+
+// Phones fit four tabs plus "More"; the rest live in the More sheet.
+const PHONE_TABS = ['Home', 'Projects', 'Notes', 'Shelf']
+const PHONE_PRIMARY = TABS.filter((t) => PHONE_TABS.includes(t.label))
+const PHONE_MORE = TABS.filter((t) => !PHONE_TABS.includes(t.label))
 
 const focus = 'outline-none focus-visible:ring-2 focus-visible:ring-ring'
 
@@ -27,32 +48,138 @@ export function BottomNav({ route }: { route: Route }) {
       className="sticky bottom-0 z-30 border-t border-line bg-canvas/85 pb-[env(safe-area-inset-bottom)] backdrop-blur-xl backdrop-saturate-150 md:hidden"
     >
       <ul className="mx-auto flex max-w-lg px-1">
-        {TABS.map((t) => {
+        {PHONE_PRIMARY.map((t) => {
           const active = t.match.includes(route.name)
           return (
             <li key={t.label} className="min-w-0 flex-1">
-              <a
-                href={t.to}
-                aria-current={active ? 'page' : undefined}
-                className={`group flex flex-col items-center gap-[3px] rounded-control pt-2 pb-1.5 text-[11px] tracking-[0.01em] transition-colors ${focus} ${active ? 'font-semibold text-ink' : 'font-medium text-muted hover:text-ink'}`}
-              >
-                <span className="relative grid h-8 w-[52px] place-items-center">
-                  {active && (
-                    <motion.span
-                      layoutId="bottom-nav-pill"
-                      className="absolute inset-0 rounded-chip bg-surface shadow-card ring-1 ring-line"
-                      transition={{ type: 'spring', bounce: 0.2, duration: 0.4 }}
-                    />
-                  )}
-                  <t.Icon active={active} className="relative size-[22px] transition-transform duration-150 group-active:scale-90 motion-reduce:transition-none" />
-                </span>
+              <a href={t.to} aria-current={active ? 'page' : undefined} className={bottomItem(active)}>
+                <BottomGlyph active={active}>
+                  <t.Icon active={active} className={bottomIcon} />
+                </BottomGlyph>
                 <span className="max-w-full truncate">{t.label}</span>
               </a>
             </li>
           )
         })}
+        <li className="min-w-0 flex-1">
+          <MoreMenu route={route} />
+        </li>
       </ul>
     </nav>
+  )
+}
+
+const bottomIcon = 'relative size-[22px] transition-transform duration-150 group-active:scale-90 motion-reduce:transition-none'
+
+function bottomItem(active: boolean) {
+  return `group flex w-full flex-col items-center gap-[3px] rounded-control pt-2 pb-1.5 text-[11px] tracking-[0.01em] transition-colors ${focus} ${active ? 'font-semibold text-ink' : 'font-medium text-muted hover:text-ink'}`
+}
+
+function BottomGlyph({ active, children }: { active: boolean; children: ReactNode }) {
+  return (
+    <span className="relative grid h-8 w-[52px] place-items-center">
+      {active && (
+        <motion.span
+          layoutId="bottom-nav-pill"
+          className="absolute inset-0 rounded-chip bg-surface shadow-card ring-1 ring-line"
+          transition={{ type: 'spring', bounce: 0.2, duration: 0.4 }}
+        />
+      )}
+      {children}
+    </span>
+  )
+}
+
+function MoreIcon({ active, className }: NavIconProps) {
+  return (
+    <svg aria-hidden viewBox="0 0 24 24" fill="currentColor" className={className}>
+      {[6, 12, 18].map((x) => (
+        <circle key={x} cx={x} cy="12" r={active ? 1.9 : 1.6} />
+      ))}
+    </svg>
+  )
+}
+
+// The overflow tabs, in a sheet that rises from the tab bar. Closes on pick, Escape, or a tap outside.
+function MoreMenu({ route }: { route: Route }) {
+  const [open, setOpen] = useState(false)
+  const trigger = useRef<HTMLButtonElement>(null)
+  const panel = useRef<HTMLDivElement>(null)
+  const id = useId()
+  const reduce = useReducedMotion()
+  const active = PHONE_MORE.some((t) => t.match.includes(route.name))
+
+  useEffect(() => {
+    if (!open) return
+    panel.current?.querySelector<HTMLElement>('a')?.focus({ preventScroll: true })
+    function onKey(e: KeyboardEvent) {
+      if (e.key !== 'Escape') return
+      setOpen(false)
+      trigger.current?.focus({ preventScroll: true })
+    }
+    function onPointer(e: globalThis.PointerEvent) {
+      const t = e.target as Node
+      if (!panel.current?.contains(t) && !trigger.current?.contains(t)) setOpen(false)
+    }
+    const close = () => setOpen(false)
+    document.addEventListener('keydown', onKey)
+    document.addEventListener('pointerdown', onPointer)
+    window.addEventListener('hashchange', close)
+    return () => {
+      document.removeEventListener('keydown', onKey)
+      document.removeEventListener('pointerdown', onPointer)
+      window.removeEventListener('hashchange', close)
+    }
+  }, [open])
+
+  return (
+    <>
+      <button
+        ref={trigger}
+        type="button"
+        aria-expanded={open}
+        aria-controls={id}
+        onClick={() => setOpen((o) => !o)}
+        className={bottomItem(active || open)}
+      >
+        <BottomGlyph active={active}>
+          <MoreIcon active={active || open} className={bottomIcon} />
+        </BottomGlyph>
+        <span className="max-w-full truncate">More</span>
+      </button>
+      <AnimatePresence>
+        {open && (
+          <motion.div
+            ref={panel}
+            id={id}
+            initial={{ opacity: 0, y: reduce ? 0 : 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: reduce ? 0 : 8, transition: { duration: 0.12 } }}
+            transition={{ duration: 0.18, ease: [0.22, 1, 0.36, 1] }}
+            className="absolute inset-x-3 bottom-[calc(100%+8px)] rounded-card border border-line bg-elevated p-1.5 shadow-pop"
+          >
+            <ul className="grid grid-cols-2 gap-1">
+              {PHONE_MORE.map((t) => {
+                const on = t.match.includes(route.name)
+                return (
+                  <li key={t.label}>
+                    <a
+                      href={t.to}
+                      aria-current={on ? 'page' : undefined}
+                      onClick={() => setOpen(false)}
+                      className={`flex items-center gap-3 rounded-control px-3 py-3 text-[15px] transition-colors ${focus} ${on ? 'bg-sunken font-semibold text-ink' : 'font-medium text-muted hover:bg-sunken hover:text-ink'}`}
+                    >
+                      <t.Icon active={on} className="size-[22px] shrink-0" />
+                      {t.label}
+                    </a>
+                  </li>
+                )
+              })}
+            </ul>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </>
   )
 }
 

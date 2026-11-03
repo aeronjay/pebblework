@@ -23,6 +23,7 @@ export interface QuestPatch {
   dueTime?: string | null
   dueDate?: string | null
   order?: number
+  identityId?: string | null
 }
 
 function stamp(now: Date) {
@@ -84,6 +85,7 @@ export async function updateQuest(id: string, patch: QuestPatch, now: Date = new
     if (patch.order !== undefined) changes.order = patch.order
     if (patch.note !== undefined) changes.note = patch.note?.trim() || undefined
     if (patch.dueTime !== undefined) changes.dueTime = patch.dueTime || undefined
+    if (patch.identityId !== undefined) changes.identityId = patch.identityId || undefined
     if (patch.dueDate !== undefined && (patch.dueDate || undefined) !== q.dueDate) {
       const next = patch.dueDate || undefined
       if (q.category === 'dq') throw new QuestError('Daily quests have no due date.')
@@ -137,6 +139,7 @@ export async function doItToday(id: string, now: Date = new Date(), database: Ma
       dueDate: today,
       dueTime: q.dueTime,
       note: q.note,
+      identityId: q.identityId,
       ...newMeta(now.toISOString()),
     })
   })

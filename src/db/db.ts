@@ -5,6 +5,7 @@ import type {
   CheckIn,
   DayClaim,
   Goal,
+  Identity,
   Jar,
   MarbleEvent,
   Meta,
@@ -36,6 +37,7 @@ export class MarbleDB extends Dexie {
   boardColumns!: EntityTable<BoardColumn, 'id'>
   cards!: EntityTable<Card, 'id'>
   notes!: EntityTable<Note, 'id'>
+  identities!: EntityTable<Identity, 'id'>
 
   // The IndexedDB name predates the Pebblework rename. Never change it: a new name opens an empty database.
   constructor(name = 'marble-jar') {
@@ -75,6 +77,7 @@ export class MarbleDB extends Dexie {
         if (marked.length) await table.bulkPut(marked)
       })
     this.version(5).stores({ notes: 'id, updatedAt, questId' })
+    this.version(6).stores({ identities: 'id, order, updatedAt' })
   }
 }
 

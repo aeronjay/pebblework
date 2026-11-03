@@ -153,6 +153,7 @@ export interface Quest extends Meta {
   redoneAs?: string // set on a missed quest when "Do it today" copied it; the copy's id
   isProject?: boolean // MQ/SQ only: has a kanban board; never assigned to a day (dueDate = display-only deadline)
   projectDoneAt?: string // ISO, set by completeProject
+  identityId?: string // the "who I'm becoming" statement this quest votes for; a missing/deleted identity = unlinked
 }
 
 export type CompletionKind = 'quest' | 'card' | 'project'
@@ -221,4 +222,12 @@ export interface Note extends Meta {
   body: string
   pinned?: boolean
   questId?: string
+}
+
+// "Who I'm becoming": an identity statement that quests and projects can be linked to (Quest.identityId).
+export interface Identity extends Meta {
+  id: string
+  statement: string // e.g. "someone who moves every day"
+  why?: string
+  order: number
 }
