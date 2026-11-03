@@ -5,6 +5,8 @@ import { JAR, JarSim, WORLD, type MarbleBody, type SimMarble } from './sim'
 const GLOW_MS = 1800
 const GLINT_MS = 1100
 const FADE_MS = 620
+const RATTLE_MS = 1400 // after a shake, stones knocking together clink
+const MAX_JOLT = 6 // world units per frame² the stones can be thrown by in one frame
 
 // Imperative owner of one canvas: simulation, render loop, theme, and the celebration/empty effects.
 // The React side drives it step by step so a claim can play out (drop → fill → empty → overflow) even
@@ -28,6 +30,10 @@ export class JarStage {
   private glintAt = -Infinity
   private nextGlint = 0
   private waiters: { resolve: () => void; until: number }[] = []
+  private offset = { x: 0, y: 0 } // where the jar is drawn relative to its rest spot (world units), e.g. while dragged
+  private lastOffset = { x: 0, y: 0 }
+  private lastVel = { x: 0, y: 0 }
+  private rattleUntil = -Infinity
 
   constructor(canvas: HTMLCanvasElement, capacity: number) {
     this.canvas = canvas
@@ -51,6 +57,9 @@ export class JarStage {
   private makeSim(capacity: number): JarSim {
     const sim = new JarSim(capacity)
     sim.onImpact = (speed, body) => this.onImpact?.(speed, body)
+    sim.onKnock = (speed, body) => {
+      if (performance.now() < this.rattleUntil) this.onImpact?.(speed * 0.6, body)
+    }
     return sim
   }
 
@@ -66,6 +75,7 @@ export class JarStage {
 
   private frame = (t: number) => {
     const sim = this.sim
+    this.applyInertia()
     let active = false
     if (!this.frozen && !sim.resting) {
       sim.step()
@@ -106,6 +116,20 @@ export class JarStage {
       })
     }
     this.raf = requestAnimationFrame(this.frame)
+  }
+
+  // The stones feel the jar's acceleration as an opposite push (they lag behind as it moves).
+  private applyInertia() {
+    const vx = this.offset.x - this.lastOffset.x
+    const vy = this.offset.y - this.lastOffset.y
+    const ax = vx - this.lastVel.x
+    const ay = vy - this.lastVel.y
+    this.lastOffset = { ...this.offset }
+    this.lastVel = { x: vx, y: vy }
+    if (this.frozen || Math.hypot(ax, ay) < 0.25) return
+    const clamp = (v: number) => Math.max(-MAX_JOLT, Math.min(MAX_JOLT, v))
+    this.sim.jolt(clamp(-ax * 1.2), clamp(-ay * 1.2))
+    this.rattleUntil = performance.now() + RATTLE_MS
   }
 
   private hasRare(): boolean {
@@ -151,7 +175,15 @@ export class JarStage {
   }
 
   shake() {
-    if (!this.frozen) this.sim.shake()
+    if (this.frozen) return
+    this.sim.shake()
+    this.rattleUntil = performance.now() + RATTLE_MS
+  }
+
+  // Jar displacement in CSS px (the canvas is moved by a transform while dragged); its motion jostles the stones.
+  setOffset(x: number, y: number) {
+    const k = WORLD.width / (this.canvas.clientWidth || WORLD.width)
+    this.offset = { x: x * k, y: y * k }
   }
 
   // Resolves once everything is at rest (or after `timeout` ms).

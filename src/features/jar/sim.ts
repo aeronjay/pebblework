@@ -103,6 +103,7 @@ export class JarSim {
   readonly capacity: number
   readonly radius: number // round marble radius; for stones, the radius of a weight-1 stone
   onImpact?: (speed: number, body: MarbleBody) => void
+  onKnock?: (speed: number, body: MarbleBody) => void // any later collision of a settled item (e.g. while shaken)
 
   constructor(capacity: number) {
     this.capacity = capacity
@@ -123,7 +124,11 @@ export class JarSim {
     Events.on(this.engine, 'collisionStart', (e) => {
       for (const { bodyA, bodyB } of e.pairs) {
         for (const b of [bodyA, bodyB] as MarbleBody[]) {
-          if (!b.marble || !b.dropped) continue
+          if (!b.marble) continue
+          if (!b.dropped) {
+            if (b.speed > 2.5) this.onKnock?.(b.speed, b)
+            continue
+          }
           b.dropped = false
           this.onImpact?.(b.speed, b)
         }
@@ -224,6 +229,19 @@ export class JarSim {
       const k = b.outline ? 0.6 : 1 // stones are heavier: a gentler lift
       Body.setVelocity(b, { x: (Math.random() - 0.5) * 6 * k, y: (-2 - Math.random() * 4) * k })
       if (b.outline) Body.setAngularVelocity(b, (Math.random() - 0.5) * 0.08)
+    }
+  }
+
+  // The jar itself changed velocity by (-dx, -dy): by inertia every item keeps going, so relative to the glass
+  // it gains (dx, dy). Capped so a wild fling can't launch stones out through the mouth.
+  jolt(dx: number, dy: number) {
+    this.wake()
+    const max = 14
+    for (const b of this.bodies.values()) {
+      const k = b.outline ? 0.85 : 1
+      const vx = Math.max(-max, Math.min(max, b.velocity.x + dx * k))
+      const vy = Math.max(-max, Math.min(max, b.velocity.y + dy * k))
+      Body.setVelocity(b, { x: vx, y: vy })
     }
   }
 

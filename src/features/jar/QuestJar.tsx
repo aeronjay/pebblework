@@ -1,7 +1,7 @@
 import confetti from 'canvas-confetti'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { Trophy } from 'lucide-react'
-import { AnimatePresence, MotionConfig, motion } from 'motion/react'
+import { AnimatePresence, MotionConfig, animate, motion, useMotionValue, useTransform, type AnimationPlaybackControls } from 'motion/react'
 import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { db, getSettings } from '../../db/db'
@@ -18,6 +18,11 @@ const ALMOST_FULL = 0.8
 const FLIGHT_MS = 680
 const MAX_TOKENS = 12
 const LIVE_GRACE_MS = 450 // let a claim event arrive before treating new DB rows as "dropped elsewhere"
+const DRAG_REACH = 70 // px: how far the jar follows the pointer before it resists (rubber band)
+const TAP_SLOP = 5 // px: less movement than this is a tap, which gives the jar a quick shake
+
+// Follows the pointer 1:1 near the rest spot, then stiffens toward ±DRAG_REACH.
+const rubber = (d: number) => Math.sign(d) * DRAG_REACH * (1 - Math.exp(-Math.abs(d) / DRAG_REACH))
 
 interface Shown {
   capacity: number
@@ -77,6 +82,55 @@ export function QuestJar() {
   const [shown, setShownState] = useState<Shown | null>(null)
   const [tokens, setTokens] = useState<Token[]>([])
   const [celebration, setCelebration] = useState<{ n: number; key: number } | null>(null)
+  // Drag the jar around to shake it: the canvas follows the pointer and springs back on release.
+  const jarX = useMotionValue(0)
+  const jarY = useMotionValue(0)
+  const jarTilt = useTransform(jarX, (x) => x * 0.08)
+  const drag = useRef<{ id: number; x: number; y: number; moved: boolean } | null>(null)
+  const springs = useRef<AnimationPlaybackControls[]>([])
+  const [dragging, setDragging] = useState(false)
+
+  useEffect(() => {
+    const sync = () => stageRef.current?.setOffset(jarX.get(), jarY.get())
+    const offX = jarX.on('change', sync)
+    const offY = jarY.on('change', sync)
+    return () => {
+      offX()
+      offY()
+      springs.current.forEach((a) => a.stop())
+    }
+  }, [jarX, jarY])
+
+  const onJarDown = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    if (e.button !== 0 || drag.current) return
+    springs.current.forEach((a) => a.stop())
+    e.currentTarget.setPointerCapture(e.pointerId)
+    // Grab from wherever the jar is now (it may still be springing back).
+    drag.current = { id: e.pointerId, x: e.clientX - jarX.get(), y: e.clientY - jarY.get(), moved: false }
+    setDragging(true)
+  }
+
+  const onJarMove = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    const d = drag.current
+    if (!d || d.id !== e.pointerId) return
+    const dx = e.clientX - d.x
+    const dy = e.clientY - d.y
+    if (!d.moved && Math.hypot(dx, dy) < TAP_SLOP) return
+    d.moved = true
+    jarX.set(rubber(dx))
+    jarY.set(rubber(dy))
+  }
+
+  const onJarUp = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    const d = drag.current
+    if (!d || d.id !== e.pointerId) return
+    drag.current = null
+    setDragging(false)
+    if (!d.moved && e.type === 'pointerup') stageRef.current?.shake()
+    // A bouncy return, so letting go gives one last wobble.
+    const spring = { type: 'spring', stiffness: 520, damping: 14 } as const
+    springs.current = [animate(jarX, 0, spring), animate(jarY, 0, spring)]
+  }
 
   useEffect(() => {
     liveRef.current = live
@@ -378,13 +432,17 @@ export function QuestJar() {
               />
             )}
           </AnimatePresence>
-          <canvas
+          <motion.canvas
             ref={canvasRef}
-            onClick={() => stageRef.current?.shake()}
+            onPointerDown={onJarDown}
+            onPointerMove={onJarMove}
+            onPointerUp={onJarUp}
+            onPointerCancel={onJarUp}
             role="img"
-            aria-label={`Reward jar: ${weight} of ${capacity} filled`}
-            className="relative block w-full cursor-pointer select-none"
-            style={{ aspectRatio: `${WORLD.width} / ${WORLD.height}` }}
+            aria-label={`Reward jar: ${weight} of ${capacity} filled. Drag to shake it.`}
+            title="Drag to shake"
+            className={`relative block w-full touch-none select-none ${dragging ? 'cursor-grabbing' : 'cursor-grab'}`}
+            style={{ aspectRatio: `${WORLD.width} / ${WORLD.height}`, x: jarX, y: jarY, rotate: jarTilt }}
           />
           <AnimatePresence>
             {celebration && (
