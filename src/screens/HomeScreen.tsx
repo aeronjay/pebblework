@@ -20,8 +20,8 @@ export function HomeScreen() {
   )
 }
 
-// Stage panels on small screens (jar and calendar each get their own dark card); on big screens the aside is the panel.
-const STAGE_CARD = 'overflow-hidden rounded-[24px] bg-[var(--stage-bg)] p-5 text-ink sm:p-6 ring-1 ring-white/[0.06] lg:overflow-visible lg:rounded-none lg:bg-transparent lg:p-0 lg:ring-0'
+// Stage panels on small screens (jar and calendar each get their own card); on big screens the aside is the panel.
+const STAGE_CARD = 'overflow-hidden rounded-[24px] bg-[var(--stage-bg)] p-5 text-ink sm:p-6 ring-1 ring-line lg:overflow-visible lg:rounded-none lg:bg-transparent lg:p-0 lg:ring-0'
 
 function Home() {
   const today = useToday()
@@ -44,7 +44,7 @@ function Home() {
   const todayKey = quests?.todayKey ?? format(today, 'yyyy-MM-dd')
 
   // Two zones: the desk (what to do: today, in progress, the quest lists) and the stage (what you've earned: the jar and
-  // the calendar you claim from), always dark so the jar is the one bright thing on screen.
+  // the calendar you claim from), on its own panel that follows the app theme.
   // `tall` (≥1024 wide and ≥700 high): a no-scroll app shell; only the quest list scrolls. `lg` but short: the same two
   // columns, with page scroll. Below lg both zones dissolve (display: contents) into one column ordered by `order-*`:
   // today, in progress, jar, quests, calendar.
@@ -93,9 +93,8 @@ function Home() {
         </div>
 
         <aside
-          data-theme="dark"
           aria-label="Your jar and calendar"
-          className="contents lg:m-3 lg:flex lg:min-w-0 lg:flex-col lg:gap-5 lg:rounded-[28px] lg:bg-[var(--stage-bg)] lg:ring-1 lg:ring-white/[0.06] lg:p-6 lg:text-ink xl:p-7 tall:min-h-0"
+          className="contents lg:m-3 lg:flex lg:min-w-0 lg:flex-col lg:gap-5 lg:rounded-[28px] lg:bg-[var(--stage-bg)] lg:ring-1 lg:ring-line lg:p-6 lg:text-ink xl:p-7 tall:min-h-0"
         >
           <div className={`order-3 flex min-w-0 flex-col ${STAGE_CARD} tall:min-h-0 tall:flex-1`}>
             <QuestJar />

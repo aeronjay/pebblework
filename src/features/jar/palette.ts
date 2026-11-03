@@ -41,7 +41,7 @@ export function mix(a: RGB, b: RGB, t: number): RGB {
 
 // The app theme (Settings → Appearance) is resolved onto <html data-theme>; fall back to the OS before it's set.
 export function prefersDark(el?: Element): boolean {
-  // Nearest themed ancestor: Home's jar stage is dark even when the app is light.
+  // Nearest themed ancestor (any subtree marked data-theme), else <html>.
   const t = (el?.closest<HTMLElement>('[data-theme]') ?? document.documentElement).dataset.theme
   if (t) return t === 'dark'
   return window.matchMedia?.('(prefers-color-scheme: dark)').matches ?? false

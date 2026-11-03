@@ -336,7 +336,7 @@ export function QuestJar() {
             Your jar
           </h2>
           <span
-            className="inline-flex shrink-0 items-center gap-1.5 rounded-chip bg-white/[0.06] px-2.5 py-1 text-[12.5px] text-muted"
+            className="inline-flex shrink-0 items-center gap-1.5 rounded-chip bg-ink/[0.06] px-2.5 py-1 text-[12.5px] text-muted"
             aria-label={`Jars filled: ${s?.jarsFilled ?? 0}`}
           >
             <Trophy size={13} strokeWidth={1.75} className="text-mq" aria-hidden />
@@ -421,7 +421,7 @@ export function QuestJar() {
             {copy || 'Stones from your claimed days'}
           </p>
           <div
-            className="mt-3 flex h-1.5 w-full gap-px overflow-hidden rounded-chip bg-white/[0.08]"
+            className="mt-3 flex h-1.5 w-full gap-px overflow-hidden rounded-chip bg-ink/[0.08]"
             role="progressbar"
             aria-label="Jar fill"
             aria-valuemin={0}

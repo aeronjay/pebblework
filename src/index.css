@@ -61,11 +61,10 @@
   --ease-out-soft: cubic-bezier(0.22, 1, 0.36, 1);
 }
 
-/* The stage: Home's jar panel, a spruce-dark scene in both themes. Kept off the dark token block below so a subtree
-   marked data-theme="dark" (the stage itself) doesn't redefine it. */
+/* The stage: Home's jar + calendar panel. Follows the app theme: pale granite in light, spruce-dark in dark. */
 :root {
-  --stage-bg: #1b322b;
-  --stage-glow: rgb(214 236 222 / 0.12);
+  --stage-bg: #f1f2ed;
+  --stage-glow: rgb(45 116 102 / 0.10);
 }
 :root[data-theme='dark'] {
   --stage-bg: #1a2823;
@@ -73,7 +72,7 @@
 }
 
 /* Unlayered, so it beats Tailwind's @layer theme defaults. Matches the `dark:` variant (data-theme), on <html> or on any
-   subtree (Home's jar stage is always dark). Dark: the trail after sundown, spruce-black rather than neutral black. */
+   subtree. Dark: the trail after sundown, spruce-black rather than neutral black. */
 :root[data-theme='dark'],
 [data-theme='dark'] {
   --color-canvas: #121a17;
