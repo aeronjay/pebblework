@@ -88,14 +88,21 @@ export function SubtaskList({ card, category }: { card: Card; category: QuestCat
                 category={category}
                 first={i === 0}
                 last={i === subtasks.length - 1}
-                onToggle={() => toast.run(() => toggleSubtask(card.id, s.id))}
+                onToggle={async () => {
+                  const r = await toast.run(() => toggleSubtask(card.id, s.id))
+                  if (r?.awarded) toast.show('+1 stone for today — claim it on the calendar', 'info')
+                  else if (r?.withdrawn) toast.show('Subtask unchecked — today’s stone was returned.', 'info')
+                }}
                 onRename={(title) => toast.run(() => renameSubtask(card.id, s.id, title))}
                 onMove={(dir) => move(s.id, i + dir)}
                 onDelete={() => {
                   // Keep focus in the list: next row's checkbox, else previous, else the add input.
                   const rows = list.current?.querySelectorAll<HTMLElement>('[role="checkbox"]')
                   const target = rows?.[i + 1] ?? rows?.[i - 1] ?? addInput.current
-                  void toast.run(() => deleteSubtask(card.id, s.id)).then(() => target?.focus())
+                  void toast.run(() => deleteSubtask(card.id, s.id)).then((r) => {
+                    if (r?.withdrawn) toast.show('Subtask deleted — today’s stone was returned.', 'info')
+                    target?.focus()
+                  })
                 }}
               />
             ))}

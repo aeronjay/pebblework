@@ -99,7 +99,7 @@ export interface ClaimCopy {
 }
 
 export function claimCopy(days: number, weight: number): ClaimCopy {
-  if (!days) return { label: 'Nothing to claim yet', detail: 'Finished days will glow here', aria: 'Nothing to claim yet' }
+  if (!days) return { label: 'Nothing to claim yet', detail: 'Check off a quest to earn a stone', aria: 'Nothing to claim yet' }
   const d = days === 1 ? '1 day' : `${days} days`
   return {
     label: `Claim ${d}`,

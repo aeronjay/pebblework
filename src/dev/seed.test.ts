@@ -22,12 +22,12 @@ describe('dev seed', () => {
     const window = days.filter((x) => x.key >= from)
     const count = (status: string) => new Set(window.filter((x) => x.status === status).map((x) => x.key)).size
     expect(count('claimed')).toBeGreaterThanOrEqual(5)
-    expect(count('ready')).toBe(3)
+    expect(count('ready')).toBe(4) // days -3..-1 and today
     expect(count('closed')).toBe(2)
     expect(count('empty')).toBeGreaterThan(0)
     expect(count('future')).toBeGreaterThan(0)
-    expect(window.find((x) => x.isToday)?.status).toBe('pending')
-    expect(claimableDays(quests, completions, claimed, NOW)).toHaveLength(3)
+    expect(window.find((x) => x.isToday)?.status).toBe('ready')
+    expect(claimableDays(quests, completions, claimed, NOW)).toHaveLength(4)
     const stones = await d.stones.where('jarId').equals(s.jarId).toArray()
     expect(stones.filter((x) => x.rarity === 'golden')).toHaveLength(1)
     expect(new Set(stones.map((x) => x.category)).size).toBeGreaterThan(1)
@@ -52,8 +52,10 @@ describe('dev seed', () => {
 
     const today = dayKey(NOW)
     const comps = (await d.questCompletions.where('questId').equals(starfall.quest.id).toArray()).filter((c) => !c.deletedAt)
-    expect(comps.every((c) => c.kind === 'card')).toBe(true)
-    expect(comps.map((c) => c.dayKey).sort()).toEqual([addDaysToKey(today, -6), addDaysToKey(today, -2), today])
+    const cardComps = comps.filter((c) => c.kind === 'card')
+    expect(cardComps.map((c) => c.dayKey).sort()).toEqual([addDaysToKey(today, -6), addDaysToKey(today, -2), today])
+    // The two checked subtasks earned their own stones on day -3.
+    expect(comps.filter((c) => c.kind === 'subtask').map((c) => c.dayKey)).toEqual([addDaysToKey(today, -3), addDaysToKey(today, -3)])
     expect(await d.dayClaims.get(addDaysToKey(today, -6))).toBeTruthy() // claimed in the seeded history
     expect(await d.dayClaims.get(addDaysToKey(today, -2))).toBeUndefined() // still ready
   })

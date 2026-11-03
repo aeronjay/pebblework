@@ -33,9 +33,9 @@ describe('board model', () => {
     expect(moveMessage({ awarded: false, withdrawn: true, todayClaimed: false }, false)).toMatch(/returned/)
     expect(moveMessage({ awarded: false, withdrawn: false, todayClaimed: false }, false)).toBeNull()
     expect(projectMessage(true)).toMatch(/\+3 stones/)
-    // Only promise a claim once today's quests are done.
+    // Open quests never block a claim.
     expect(moveMessage({ awarded: true, withdrawn: false, todayClaimed: false }, true, 0)).toMatch(/claim it on the calendar/)
-    expect(moveMessage({ awarded: true, withdrawn: false, todayClaimed: false }, true, 2)).toMatch(/finish today’s 2 quests to claim it/)
-    expect(projectMessage(true, 1)).toMatch(/finish today’s 1 quest to claim them/)
+    expect(moveMessage({ awarded: true, withdrawn: false, todayClaimed: false }, true, 2)).toMatch(/claim it on the calendar/)
+    expect(projectMessage(true, 1)).toMatch(/claim them on the calendar/)
   })
 })

@@ -68,9 +68,9 @@ export function plural(n: number, one: string, many = `${one}s`): string {
   return `${n} ${n === 1 ? one : many}`
 }
 
-// "claim it" only once today can actually be claimed (a day is ready when its assigned quests are all done).
-function claimHint(openQuests: number): string {
-  return openQuests > 0 ? `finish today’s ${plural(openQuests, 'quest')} to claim it` : 'claim it on the calendar'
+// Every stone is claimable right away; open quests no longer block the day. `_openQuests` kept for callers.
+function claimHint(_openQuests: number): string {
+  return 'claim it on the calendar'
 }
 
 // What to tell the user after a card changed column. null = say nothing (plain moves are their own feedback).

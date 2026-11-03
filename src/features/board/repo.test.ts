@@ -329,25 +329,41 @@ describe('cards', () => {
 })
 
 describe('subtasks', () => {
-  it('adds, toggles, renames, reorders and deletes without earning anything', async () => {
+  it('adds, toggles, renames, reorders and deletes; unchecking or deleting today returns the stone', async () => {
     const d = freshDb()
     const p = await project(d)
     const c = await addCard(p.id, p.todo, 'C', NOW, d)
     const [s1, s2, s3] = [await addSubtask(c, 'Form', NOW, d), await addSubtask(c, 'API', NOW, d), await addSubtask(c, 'Tests', NOW, d)]
-    await toggleSubtask(c, s1, undefined, NOW, d)
-    await toggleSubtask(c, s2, true, NOW, d)
-    await toggleSubtask(c, s2, true, NOW, d) // explicit value is idempotent
+    expect(await toggleSubtask(c, s1, undefined, NOW, d)).toEqual({ awarded: true, withdrawn: false })
+    expect(await toggleSubtask(c, s2, true, NOW, d)).toEqual({ awarded: true, withdrawn: false })
+    expect(await toggleSubtask(c, s2, true, NOW, d)).toEqual({ awarded: false, withdrawn: false }) // idempotent
+    expect(await d.questCompletions.filter((x) => !x.deletedAt).count()).toBe(2)
     await renameSubtask(c, s3, 'E2E tests', NOW, d)
     await moveSubtask(c, s3, 0, NOW, d)
     let subs = (await d.cards.get(c))!.subtasks
     expect(subs.map((s) => [s.title, s.done])).toEqual([['E2E tests', false], ['Form', true], ['API', true]])
-    await toggleSubtask(c, s1, undefined, NOW, d)
-    await deleteSubtask(c, s2, NOW, d)
+    expect(await toggleSubtask(c, s1, undefined, NOW, d)).toEqual({ awarded: false, withdrawn: true })
+    expect(await deleteSubtask(c, s2, NOW, d)).toEqual({ awarded: false, withdrawn: true })
     subs = (await d.cards.get(c))!.subtasks
     expect(subs.map((s) => [s.id, s.done])).toEqual([[s3, false], [s1, false]])
     await expect(toggleSubtask(c, 'nope', undefined, NOW, d)).rejects.toThrow(QuestError)
     await expect(addSubtask(c, '', NOW, d)).rejects.toThrow(QuestError)
-    expect(await d.questCompletions.count()).toBe(0)
+    expect(await d.questCompletions.filter((x) => !x.deletedAt).count()).toBe(0)
+  })
+
+  it('earns a claimable stone per checked subtask, which stays once claimed', async () => {
+    const d = freshDb()
+    const p = await project(d)
+    await createQuest({ category: 'dq', title: 'Stretch' }, NOW, d) // open quest doesn't block
+    const c = await addCard(p.id, p.todo, 'C', NOW, d)
+    const s = await addSubtask(c, 'Form', NOW, d)
+    await toggleSubtask(c, s, true, NOW, d)
+    expect(await status(d, D0, NOW)).toBe('ready')
+    const r = await claimAll(d, NOW, normal)
+    expect(r.stones).toHaveLength(1)
+    expect(await toggleSubtask(c, s, false, NOW, d)).toEqual({ awarded: false, withdrawn: false })
+    expect(await toggleSubtask(c, s, true, NOW, d)).toEqual({ awarded: false, withdrawn: false }) // once ever
+    expect((await claimAll(d, NOW, normal)).days).toEqual([])
   })
 })
 
@@ -400,13 +416,13 @@ describe('claim integration', () => {
     expect((await d.dayClaims.get(D0))?.weight).toBe(1)
   })
 
-  it('stays pending while assigned quests are open', async () => {
+  it('claims a done card while assigned quests are still open', async () => {
     const d = freshDb()
     const p = await project(d)
     await createQuest({ category: 'dq', title: 'Stretch' }, NOW, d)
     await addCard(p.id, p.done, 'C', NOW, d)
-    expect(await status(d, D0, NOW)).toBe('pending')
-    expect((await claimAll(d, NOW, normal)).days).toEqual([])
+    expect(await status(d, D0, NOW)).toBe('ready')
+    expect((await claimAll(d, NOW, normal)).days).toEqual([D0])
   })
 
   it('the project bonus produces weight per units', async () => {

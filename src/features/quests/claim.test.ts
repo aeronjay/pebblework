@@ -102,14 +102,14 @@ describe('quest repo', () => {
   it('deletes forward only: past days keep the quest, today is freed', async () => {
     const d = freshDb()
     const [a, b] = await dqs(d, 2)
-    await completeQuest(a, at(D0), d) // D0 closed (b missing)
+    await completeQuest(a, at(D0), d) // D0 ready (b missing, a alone still claims)
     await completeQuest(a, at(day(1)), d)
     await completeQuest(b, at(day(1)), d) // day 1 ready
     await completeQuest(a, at(day(2)), d)
     await completeQuest(b, at(day(2)), d)
     await deleteQuest(b, at(day(2), 18), d)
     const now = at(day(2), 19)
-    expect(await status(d, D0, now)).toBe('closed')
+    expect(await status(d, D0, now)).toBe('ready')
     expect(await status(d, day(1), now)).toBe('ready')
     // b's completion today is withdrawn with it; a alone makes today ready.
     expect((await d.questCompletions.get(`${b}:${day(2)}`))?.deletedAt).toBeDefined()
@@ -120,21 +120,34 @@ describe('quest repo', () => {
 })
 
 describe('claimAll', () => {
-  it('claims ready days only, skips closed ones, and is idempotent', async () => {
+  it('claims every day with completions (partial ones too), skips untouched ones, and is idempotent', async () => {
     const d = freshDb()
     const ids = await dqs(d, 2)
     await completeAll(d, ids, at(D0))
-    await completeQuest(ids[0], at(day(1)), d) // closed
-    await completeAll(d, ids, at(day(2)))
-    const now = at(day(3))
+    await completeQuest(ids[0], at(day(1)), d) // partial: one stone
+    // day(2): nothing done → closed
+    await completeAll(d, ids, at(day(3)))
+    const now = at(day(4))
     const first = await claimAll(d, now, normal)
-    expect(first.days).toEqual([D0, day(2)])
-    expect(first.stones.map((s) => [s.dayKey, s.weight])).toEqual([[D0, 2], [day(2), 2]])
+    expect(first.days).toEqual([D0, day(1), day(3)])
+    expect(first.stones.map((s) => [s.dayKey, s.weight])).toEqual([[D0, 2], [day(1), 1], [day(3), 2]])
     expect(first.stones.every((s) => s.category === 'dq' && s.rarity === 'normal')).toBe(true)
-    expect(await d.dayClaims.count()).toBe(2)
+    expect(await d.dayClaims.count()).toBe(3)
     expect(await claimAll(d, now, normal)).toEqual({ days: [], stones: [], filledJarIds: [] })
-    expect(await d.stones.count()).toBe(2)
-    expect(await status(d, day(1), now)).toBe('closed')
+    expect(await d.stones.count()).toBe(3)
+    expect(await status(d, day(1), now)).toBe('claimed')
+    expect(await status(d, day(2), now)).toBe('closed')
+  })
+
+  it('claims a single daily quest right away while others are open', async () => {
+    const d = freshDb()
+    const [a, b] = await dqs(d, 2)
+    await completeQuest(a, at(D0, 9), d)
+    const r = await claimAll(d, at(D0, 10), normal)
+    expect(r.days).toEqual([D0])
+    expect(r.stones.map((s) => s.weight)).toEqual([1])
+    await completeQuest(b, at(D0, 11), d)
+    expect((await claimAll(d, at(D0, 12), normal)).stones.map((s) => s.weight)).toEqual([1])
   })
 
   it('does not double-award under concurrent calls', async () => {

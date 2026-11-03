@@ -45,7 +45,7 @@ const ITEMS: { label: string; hint: string; swatch: ReactNode }[] = [
   { label: 'Today', hint: 'Bar tracks progress', swatch: <Swatch className="qc-today" /> },
   {
     label: 'Ready',
-    hint: 'All done, claim it',
+    hint: 'Stones waiting, claim them',
     swatch: (
       <Swatch className="qc-ready" style={{ background: 'color-mix(in oklch, var(--color-mq) 22%, transparent)' }}>
         <span className="qc-ember size-[4px] rounded-full bg-mq" />

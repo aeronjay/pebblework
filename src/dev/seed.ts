@@ -82,8 +82,9 @@ export async function seed(database: MarbleDB = db, mode: SeedMode = 'demo', now
   await seedStarfall(database, key, at, now)
   await seedPortfolio(database, key, at)
 
-  const partial = new Set([-9]) // closed: one DQ skipped. Day -7 is closed by the missed passport.
-  for (let o = -12; o <= -1; o++) await complete(partial.has(o) ? dq.slice(0, 2) : dq, o)
+  // Closed = passed with nothing done (any finished quest makes a day claimable). Day -8 is partial: one DQ skipped.
+  const skipped = new Set([-9, -7])
+  for (let o = -12; o <= -1; o++) if (!skipped.has(o)) await complete(o === -8 ? dq.slice(0, 2) : dq, o)
   await complete([plants], -11)
   await complete([dentist], -10)
   await complete([outline], -5)
@@ -91,7 +92,7 @@ export async function seed(database: MarbleDB = db, mode: SeedMode = 'demo', now
   await claimAll(database, at(-8, 21), rng)
   await claimAll(database, at(-4, 21), rng)
 
-  // Today: pending (one DQ and an anytime SQ done, the rest open).
+  // Today: ready (one DQ, an anytime SQ and a card done; the rest open).
   await complete([dq[0], grandma], 0)
 
   // Shape the active jar for the demo: set its fill, and exactly one golden stone.
@@ -133,7 +134,7 @@ async function seedStarfall(database: MarbleDB, key: (o: number) => string, at: 
   const movement = await card(todo, 'Player movement')
   const title = await card(todo, 'Title screen')
   const menu = await card(playtest, 'Main menu')
-  // Day -6 gets claimed; day -2 stays ready; today stays pending (DQs still open).
+  // Day -6 gets claimed; day -2 stays ready; today is ready too.
   await moveCard(movement, done, 0, at(-6, 20), database)
   await moveCard(title, done, 0, at(-2, 20), database)
   await moveCard(menu, done, 0, now, database)

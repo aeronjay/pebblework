@@ -1,10 +1,10 @@
 // Project boards: columns, cards, subtasks, and the stones cards and projects earn.
 // Integer `order`, renumbered 0..n-1 (ties: createdAt, then id) on every reorder, so ordering is stable.
-// Completions are only ever created/withdrawn by card moves (incl. add/delete/deleteColumn) and complete/reopenProject,
-// never by column reorders.
+// Completions are only ever created/withdrawn by card moves (incl. add/delete/deleteColumn), subtask checks (incl.
+// subtask/card deletes) and complete/reopenProject, never by column or subtask reorders.
 import { db, getDeviceId, newId, newMeta, type MarbleDB } from '../../db/db'
 import type { BoardColumn, Card, Quest, QuestCompletion, Subtask } from '../../db/types'
-import { cardCompletionId, dayKey, isProject, projectCompletionId } from '../quests/day'
+import { cardCompletionId, dayKey, isProject, projectCompletionId, subtaskCompletionId } from '../quests/day'
 import { QuestError } from '../quests/errors'
 
 export const DEFAULT_COLUMNS = ['To do', 'In progress', 'Done']
@@ -289,7 +289,9 @@ export async function deleteCard(id: string, now: Date = new Date(), database: M
     await database.cards.update(id, { deletedAt: now.toISOString(), ...stamp(now) })
     await renumberCards(await liveCards(card.columnId, database), card.columnId, now, database)
     const withdrawn = await withdraw(cardCompletionId(id), now, database)
-    return { awarded: false, withdrawn, todayClaimed: await isClaimedLive(cardCompletionId(id), database) }
+    let subWithdrawn = false
+    for (const s of card.subtasks) if (await withdraw(subtaskCompletionId(id, s.id), now, database)) subWithdrawn = true
+    return { awarded: false, withdrawn: withdrawn || subWithdrawn, todayClaimed: await isClaimedLive(cardCompletionId(id), database) }
   })
 }
 
@@ -320,18 +322,27 @@ export async function moveCard(
   })
 }
 
-// ---- Subtasks (progress UI only; never earn stones) ----
+// ---- Subtasks (checking one off earns a 1-unit stone, once per subtask, ever) ----
 
-async function editSubtasks(
+// What a subtask check did to today's stones (for the "+1 stone" toast).
+export interface SubtaskToggleResult {
+  awarded: boolean // a new unclaimed completion was stamped today
+  withdrawn: boolean // today's unclaimed subtask completion was withdrawn (unchecked or deleted)
+}
+
+async function editSubtasks<T = void>(
   cardId: string,
   now: Date,
   database: MarbleDB,
   edit: (list: Subtask[]) => Subtask[],
-): Promise<void> {
-  await database.transaction('rw', tables(database), async () => {
+  after?: (card: Card, quest: Quest, before: Subtask[], next: Subtask[]) => Promise<T>,
+): Promise<T> {
+  return database.transaction('rw', tables(database), async () => {
     const card = await getCard(cardId, database)
-    await getProject(card.questId, database)
-    await database.cards.update(cardId, { subtasks: edit([...card.subtasks]), ...stamp(now) })
+    const quest = await getProject(card.questId, database)
+    const next = edit([...card.subtasks])
+    await database.cards.update(cardId, { subtasks: next, ...stamp(now) })
+    return after ? after(card, quest, card.subtasks, next) : (undefined as T)
   })
 }
 
@@ -347,19 +358,32 @@ export async function addSubtask(cardId: string, title: string, now: Date = new 
   return subtask.id
 }
 
-// Flips `done`, or sets it when `done` is given.
+// Flips `done`, or sets it when `done` is given. Checking stamps an unclaimed 1-unit completion today (unless one
+// already stands); unchecking withdraws it only if it was stamped today and isn't claimed.
 export async function toggleSubtask(
   cardId: string,
   subtaskId: string,
   done?: boolean,
   now: Date = new Date(),
   database: MarbleDB = db,
-): Promise<void> {
-  await editSubtasks(cardId, now, database, (list) => {
-    const i = indexOf(list, subtaskId)
-    list[i] = { ...list[i], done: done ?? !list[i].done }
-    return list
-  })
+): Promise<SubtaskToggleResult> {
+  return editSubtasks(
+    cardId,
+    now,
+    database,
+    (list) => {
+      const i = indexOf(list, subtaskId)
+      list[i] = { ...list[i], done: done ?? !list[i].done }
+      return list
+    },
+    async (card, quest, _before, next) => {
+      const id = subtaskCompletionId(card.id, subtaskId)
+      if (next.find((s) => s.id === subtaskId)?.done) {
+        return { awarded: await award(id, quest, { kind: 'subtask', cardId: card.id, units: 1 }, now, database), withdrawn: false }
+      }
+      return { awarded: false, withdrawn: await withdraw(id, now, database) }
+    },
+  )
 }
 
 export async function renameSubtask(
@@ -377,11 +401,23 @@ export async function renameSubtask(
   })
 }
 
-export async function deleteSubtask(cardId: string, subtaskId: string, now: Date = new Date(), database: MarbleDB = db): Promise<void> {
-  await editSubtasks(cardId, now, database, (list) => {
-    list.splice(indexOf(list, subtaskId), 1)
-    return list
-  })
+// Withdraws the subtask's completion if it was stamped today and isn't claimed.
+export async function deleteSubtask(
+  cardId: string,
+  subtaskId: string,
+  now: Date = new Date(),
+  database: MarbleDB = db,
+): Promise<SubtaskToggleResult> {
+  return editSubtasks(
+    cardId,
+    now,
+    database,
+    (list) => {
+      list.splice(indexOf(list, subtaskId), 1)
+      return list
+    },
+    async (card) => ({ awarded: false, withdrawn: await withdraw(subtaskCompletionId(card.id, subtaskId), now, database) }),
+  )
 }
 
 // `toIndex` = final index (arrayMove semantics), clamped.

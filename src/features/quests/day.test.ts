@@ -129,15 +129,17 @@ describe('day status', () => {
   it('covers every status', () => {
     expect(dayStatus('2026-11-11', quests, [], false, NOW)).toBe('future')
     expect(dayStatus('2026-10-20', quests, [], false, NOW)).toBe('empty') // before the DQs started
-    expect(dayStatus(TODAY, quests, [done(a, TODAY)], false, NOW)).toBe('pending')
+    expect(dayStatus(TODAY, quests, [], false, NOW)).toBe('pending')
+    // One finished quest is claimable on its own; the rest of the day doesn't have to be done.
+    expect(dayStatus(TODAY, quests, [done(a, TODAY)], false, NOW)).toBe('ready')
     expect(dayStatus(TODAY, quests, [done(a, TODAY), done(b, TODAY)], false, NOW)).toBe('ready')
-    expect(dayStatus('2026-11-09', quests, [done(a, '2026-11-09')], false, NOW)).toBe('closed')
+    expect(dayStatus('2026-11-09', quests, [done(a, '2026-11-09')], false, NOW)).toBe('ready')
     expect(dayStatus('2026-11-08', quests, [], false, NOW)).toBe('closed')
     expect(dayStatus('2026-11-08', quests, [], true, NOW)).toBe('claimed')
   })
 
   it('ignores un-completed (soft-deleted) completions', () => {
-    const comps = [done(a, TODAY), done(b, TODAY, { deletedAt: meta.createdAt })]
+    const comps = [done(a, TODAY, { deletedAt: meta.createdAt })]
     expect(dayStatus(TODAY, quests, comps, false, NOW)).toBe('pending')
   })
 
@@ -149,8 +151,8 @@ describe('day status', () => {
 
   it('keeps a past day closed when its quest is deleted later, but frees today when deleted today', () => {
     const deleted = { ...b, deletedAt: NOW.toISOString() }
-    expect(dayStatus('2026-11-09', [a, deleted], [done(a, '2026-11-09')], false, NOW)).toBe('closed')
-    expect(dayStatus(TODAY, [a, deleted], [done(a, TODAY)], false, NOW)).toBe('ready')
+    expect(dayStatus('2026-11-09', [a, deleted], [], false, NOW)).toBe('closed')
+    expect(dayStatus(TODAY, [deleted], [], false, NOW)).toBe('empty')
   })
 
   it('counts completions of a deleted quest toward the day', () => {
@@ -164,10 +166,10 @@ describe('day status', () => {
     const comps = [
       done(a, '2026-11-08'), done(b, '2026-11-08'),
       done(a, '2026-11-07', claimedAt), done(b, '2026-11-07', claimedAt),
-      done(a, '2026-11-06'), // closed
-      done(a, TODAY), done(b, TODAY),
+      done(a, '2026-11-06'), // partial day: still claimable
+      done(a, TODAY),
     ]
-    expect(claimableDays(quests, comps, new Set(['2026-11-07']), NOW)).toEqual(['2026-11-08', TODAY])
+    expect(claimableDays(quests, comps, new Set(['2026-11-07']), NOW)).toEqual(['2026-11-06', '2026-11-08', TODAY])
   })
 
   it('makes a claimed day ready again when new completions land', () => {
@@ -181,16 +183,16 @@ describe('day status', () => {
     expect(claimableDays([a, b, u], more, new Set([TODAY]), NOW)).toEqual([TODAY])
     // Claimed completions alone mark the day claimed, even without the DayClaim flag.
     expect(dayStatus(TODAY, [a, b], claimedOnly, false, NOW)).toBe('claimed')
-    // A quest added after the claim: today is pending while it's open and something new is done; nothing new → claimed.
+    // A quest added after the claim doesn't block new completions: nothing new → claimed, something new → ready.
     const c = quest({ id: 'c', category: 'dq', startDate: TODAY })
     expect(dayStatus(TODAY, [a, b, c, u], claimedOnly, true, NOW)).toBe('claimed')
-    expect(dayStatus(TODAY, [a, b, c, u], more, true, NOW)).toBe('pending')
+    expect(dayStatus(TODAY, [a, b, c, u], more, true, NOW)).toBe('ready')
     // A past claimed day stays claimed (never closed) even with an unfinished later addition.
     const past = '2026-11-09'
     const pastDone = [done(a, past, claimedAt), done(b, past, claimedAt), done(u, past)]
     const late = quest({ id: 'l', category: 'dq', startDate: past })
-    expect(dayStatus(past, [a, b, late, u], pastDone, true, NOW)).toBe('claimed')
-    expect(dayStatus(past, [a, b, u], pastDone, true, NOW)).toBe('ready')
+    expect(dayStatus(past, [a, b, late, u], pastDone.slice(0, 2), true, NOW)).toBe('claimed')
+    expect(dayStatus(past, [a, b, late, u], pastDone, true, NOW)).toBe('ready')
   })
 })
 
@@ -278,8 +280,8 @@ describe('project quests and units', () => {
     const comps = [card(p, 'c1', TODAY), card(p, 'c2', TODAY), bonus(p, TODAY), card(p, 'c3', TODAY, { deletedAt: meta.createdAt })]
     expect(stonesForDay(comps)).toEqual([{ category: 'sq', weight: 3 }, { category: 'sq', weight: 2 }])
     expect(intensity(5)).toBe(3)
-    // Only card work today, DQ still open → pending; summary counts units.
-    expect(daySummary(TODAY, [p, d], comps, false, NOW)).toMatchObject({ status: 'pending', done: 5, assigned: 6, intensity: 3, categories: ['dq', 'sq'] })
+    // Only card work today, DQ still open → still ready (cards claim on their own); summary counts units.
+    expect(daySummary(TODAY, [p, d], comps, false, NOW)).toMatchObject({ status: 'ready', done: 5, assigned: 6, intensity: 3, categories: ['dq', 'sq'] })
     // Nothing else pending → ready (claimable).
     expect(dayStatus(TODAY, [p], comps, false, NOW)).toBe('ready')
     expect(claimableDays([p], comps, new Set(), NOW)).toEqual([TODAY])

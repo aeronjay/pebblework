@@ -157,16 +157,16 @@ export interface Quest extends Meta {
   projectOrder?: number // projects only: manual position on the Projects grid (unset = auto, after ordered ones)
 }
 
-export type CompletionKind = 'quest' | 'card' | 'project'
+export type CompletionKind = 'quest' | 'card' | 'subtask' | 'project'
 
 export interface QuestCompletion extends Meta {
-  id: string // quest: `${questId}:${dayKey}`; card: `card:${cardId}`; project bonus: `project:${questId}`
+  id: string // quest: `${questId}:${dayKey}`; card: `card:${cardId}`; subtask: `subtask:${cardId}:${subtaskId}`; project bonus: `project:${questId}`
   questId: string // for card/project completions: the project quest
   category: QuestCategory // denormalized so stones survive quest deletion
   dayKey: string
   completedAt: string
   kind?: CompletionKind // undefined = 'quest'
-  cardId?: string // card completions only
+  cardId?: string // card and subtask completions only
   units?: number // stone weight units; default 1, project bonus 3
   claimedAt?: string // ISO; set by claimAll. A claimed completion is permanent (never withdrawn or un-completed).
   claimJarId?: string // quest jar that received the day's first stone in that claim

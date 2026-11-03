@@ -63,6 +63,10 @@ export function cardCompletionId(cardId: string): string {
   return `card:${cardId}`
 }
 
+export function subtaskCompletionId(cardId: string, subtaskId: string): string {
+  return `subtask:${cardId}:${subtaskId}`
+}
+
 export function projectCompletionId(questId: string): string {
   return `project:${questId}`
 }
@@ -86,7 +90,7 @@ export function unclaimed(completions: QuestCompletion[]): QuestCompletion[] {
   return completions.filter((c) => !c.deletedAt && !c.claimedAt)
 }
 
-// A completion of the quest itself (not a project card or project bonus).
+// A completion of the quest itself (not a project card, subtask or project bonus).
 export function isQuestCompletion(c: QuestCompletion): boolean {
   return !c.cardId && (c.kind ?? 'quest') === 'quest'
 }
@@ -156,20 +160,18 @@ export function questWhen(q: Quest, completions: QuestCompletion[], now: Date): 
   return done.length && done.every((c) => c.dayKey < today) ? 'past' : 'anytime'
 }
 
-// Incremental claims: `ready` = all assigned done and ≥1 unclaimed completion (a claimed day becomes ready again
-// when new completions land). `claimed` = the day has a claim (DayClaim or claimed completions) and isn't ready —
-// except today, which is `pending` while new work is open. `claimed` param = a DayClaim exists for `key`.
+// Incremental claims: `ready` = ≥1 unclaimed completion — every finished quest, card or subtask can be claimed on its
+// own, without waiting for the rest of the day (a claimed day becomes ready again when new completions land).
+// `claimed` = the day has a claim (DayClaim or claimed completions) and nothing new to claim. `claimed` param = a
+// DayClaim exists for `key`.
 export function dayStatus(key: string, quests: Quest[], completions: QuestCompletion[], claimed: boolean, now: Date): DayStatus {
   const today = dayKey(now)
   const done = completions.filter((c) => c.dayKey === key && !c.deletedAt)
   const hasClaim = claimed || done.some(isClaimed)
   if (key > today) return hasClaim ? 'claimed' : 'future'
+  if (unclaimed(done).length > 0) return 'ready'
+  if (hasClaim) return 'claimed'
   const assigned = quests.filter((q) => isAssigned(q, key))
-  const doneIds = new Set(done.filter(isQuestCompletion).map((c) => c.questId))
-  const allDone = assigned.every((q) => doneIds.has(q.id))
-  const fresh = unclaimed(done).length > 0
-  if (allDone && fresh) return 'ready'
-  if (hasClaim) return fresh && key === today ? 'pending' : 'claimed'
   if (!assigned.length && !done.length) return 'empty'
   return key === today ? 'pending' : 'closed'
 }
@@ -190,8 +192,8 @@ export function daySummary(key: string, quests: Quest[], completions: QuestCompl
   }
 }
 
-// Days up to today with unclaimed completions whose assigned quests are all done, oldest first. Includes days
-// claimed earlier that gained new completions since.
+// Days up to today with unclaimed completions, oldest first. Includes days claimed earlier that gained new
+// completions since.
 export function claimableDays(quests: Quest[], completions: QuestCompletion[], claimed: ReadonlySet<string>, now: Date): string[] {
   const today = dayKey(now)
   const keys = new Set(unclaimed(completions).filter((c) => c.dayKey <= today).map((c) => c.dayKey))
