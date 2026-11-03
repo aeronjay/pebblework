@@ -22,3 +22,7 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Claude Code (local settings, skills, session data)
+.claude/
+CLAUDE.local.md
