@@ -6,12 +6,14 @@ import type { ProjectSummary } from '../../board/hooks'
 import type { QuestItem } from '../hooks'
 import { CATEGORY } from '../meta'
 import { describeProject } from './describe'
+import type { RowDrag } from './QuestRow'
 import { RowActions } from './RowActions'
 
 interface Props {
   item: QuestItem
   summary?: ProjectSummary // undefined while the board summaries load
   todayKey: string
+  drag?: RowDrag
   onEdit: () => void
   onMove?: (direction: -1 | 1) => void
   canMoveUp?: boolean
@@ -19,7 +21,7 @@ interface Props {
 }
 
 // A project in the quest list: no checkbox (stages are finished on the board). The whole row opens the board.
-export function ProjectRow({ item, summary, todayKey, onEdit, onMove, canMoveUp, canMoveDown }: Props) {
+export function ProjectRow({ item, summary, todayKey, drag, onEdit, onMove, canMoveUp, canMoveDown }: Props) {
   const { quest } = item
   const meta = CATEGORY[quest.category]
   const done = !!quest.projectDoneAt
@@ -32,12 +34,17 @@ export function ProjectRow({ item, summary, todayKey, onEdit, onMove, canMoveUp,
 
   return (
     <motion.li
-      layout="position"
+      layout={drag?.sorting ? false : 'position'}
       initial={false}
-      exit={{ opacity: 0, height: 0, transition: { duration: 0.18 } }}
+      exit={drag?.sorting ? undefined : { opacity: 0, height: 0, transition: { duration: 0.18 } }}
       className="group/row relative"
     >
-      <div className="relative flex items-center gap-3 rounded-control px-3 py-2.5 transition-colors duration-150 hover:bg-sunken/55 has-[:focus-visible]:bg-sunken/55">
+      <div
+        ref={drag?.ref}
+        style={drag?.style}
+        className={`relative flex items-center gap-3 rounded-control px-3 py-2.5 transition-colors duration-150 hover:bg-sunken/55 has-[:focus-visible]:bg-sunken/55 ${drag?.dragging ? 'opacity-40' : ''}`}
+      >
+        {drag?.handle}
         <span
           aria-hidden
           className="relative grid size-[34px] shrink-0 place-items-center rounded-[10px] transition-colors"

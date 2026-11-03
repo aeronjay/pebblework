@@ -1,5 +1,6 @@
 import { StickyNote } from 'lucide-react'
 import { motion } from 'motion/react'
+import type { CSSProperties, ReactNode } from 'react'
 import { completeQuest, doItToday, uncompleteQuest } from '../repo'
 import type { QuestItem } from '../hooks'
 import { describeQuest, formatDay } from './describe'
@@ -8,10 +9,20 @@ import { QuestCheck, type CheckState } from './QuestCheck'
 import { RowActions } from './RowActions'
 import { useToast } from './toastContext'
 
+// Drag-and-drop wiring for a row in the open list (absent in the "earlier" tail).
+export interface RowDrag {
+  ref: (el: HTMLElement | null) => void
+  style: CSSProperties
+  handle: ReactNode
+  dragging: boolean
+  sorting: boolean
+}
+
 interface Props {
   item: QuestItem
   todayKey: string
   claimed: boolean
+  drag?: RowDrag
   onEdit: () => void
   onMove?: (direction: -1 | 1) => void
   canMoveUp?: boolean
@@ -29,7 +40,7 @@ function checkState(item: QuestItem, todayKey: string, claimed: boolean): { stat
   return { state: 'doneFixed', reason: item.doneToday && claimed ? 'Today is claimed, so this stays done' : 'Completed on an earlier day' }
 }
 
-export function QuestRow({ item, todayKey, claimed, onEdit, onMove, canMoveUp, canMoveDown }: Props) {
+export function QuestRow({ item, todayKey, claimed, drag, onEdit, onMove, canMoveUp, canMoveDown }: Props) {
   const { quest } = item
   const toast = useToast()
   const feedback = useCompleteFeedback()
@@ -51,12 +62,17 @@ export function QuestRow({ item, todayKey, claimed, onEdit, onMove, canMoveUp, c
 
   return (
     <motion.li
-      layout="position"
+      layout={drag?.sorting ? false : 'position'}
       initial={false}
-      exit={{ opacity: 0, height: 0, transition: { duration: 0.18 } }}
+      exit={drag?.sorting ? undefined : { opacity: 0, height: 0, transition: { duration: 0.18 } }}
       className="group/row relative"
     >
-      <div className={`flex items-start gap-3 rounded-control px-3 py-2.5 transition-colors duration-150 hover:bg-sunken/55 has-[:focus-visible]:bg-sunken/55 ${state === 'missed' ? 'opacity-75' : ''}`}>
+      <div
+        ref={drag?.ref}
+        style={drag?.style}
+        className={`relative flex items-start gap-3 rounded-control px-3 py-2.5 transition-colors duration-150 hover:bg-sunken/55 has-[:focus-visible]:bg-sunken/55 ${drag?.dragging ? 'opacity-40' : state === 'missed' ? 'opacity-75' : ''}`}
+      >
+        {drag?.handle}
         <div className="pt-px">
           <QuestCheck state={state} category={quest.category} title={quest.title} reason={reason} onToggle={toggle} />
         </div>

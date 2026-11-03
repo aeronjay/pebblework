@@ -186,6 +186,52 @@ export async function moveQuest(id: string, direction: -1 | 1, now: Date = new D
   })
 }
 
+// Drag-and-drop: puts quest `id` into `toCategory`, right before `beforeId` (null = last) and renumbers that list.
+// Only main and side quests swap lists (same rules, different label). Daily quests can't: whether a quest counts
+// for a past day depends on its live category, so a swap would rewrite history. A missed quest stays put for the same
+// reason. On a swap, the quest's unclaimed completions follow it so the stones they drop match; claimed ones stay.
+export async function placeQuest(
+  id: string,
+  toCategory: QuestCategory,
+  beforeId: string | null,
+  now: Date = new Date(),
+  database: MarbleDB = db,
+): Promise<void> {
+  await database.transaction('rw', database.quests, database.questCompletions, async () => {
+    const q = await getLiveQuest(id, database)
+    const swap = q.category !== toCategory
+    if (swap) {
+      if (q.category === 'dq' || toCategory === 'dq') throw new QuestError('Daily quests stay in their own list.')
+      const mine = await database.questCompletions.where('questId').equals(id).toArray()
+      if (isMissed(q, mine, now)) throw new QuestError('A missed quest keeps its list. Use "Do it today" instead.')
+    }
+    const list = sortQuests(await database.quests.where('category').equals(toCategory).filter((x) => !x.deletedAt && x.id !== id).toArray())
+    const at = beforeId ? list.findIndex((x) => x.id === beforeId) : -1
+    list.splice(at < 0 ? list.length : at, 0, { ...q, category: toCategory })
+    for (const [i, x] of list.entries()) {
+      if (x.id === id) await database.quests.update(id, { category: toCategory, order: i, ...stamp(now) })
+      else if (x.order !== i) await database.quests.update(x.id, { order: i, ...stamp(now) })
+    }
+    if (swap) {
+      await database.questCompletions
+        .where('questId')
+        .equals(id)
+        .filter((c) => !c.deletedAt && !c.claimedAt)
+        .modify({ category: toCategory, ...stamp(now) })
+    }
+  })
+}
+
+// Projects grid order: `ids` in their new order (any subset; the rest keep theirs but sort after).
+export async function reorderProjects(ids: string[], now: Date = new Date(), database: MarbleDB = db): Promise<void> {
+  await database.transaction('rw', database.quests, async () => {
+    for (const [i, id] of ids.entries()) {
+      const q = await database.quests.get(id)
+      if (q && !q.deletedAt && q.projectOrder !== i) await database.quests.update(id, { projectOrder: i, ...stamp(now) })
+    }
+  })
+}
+
 export function sortQuests(list: Quest[]): Quest[] {
   return [...list].sort(
     (a, b) =>

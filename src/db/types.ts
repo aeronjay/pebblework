@@ -154,6 +154,7 @@ export interface Quest extends Meta {
   isProject?: boolean // MQ/SQ only: has a kanban board; never assigned to a day (dueDate = display-only deadline)
   projectDoneAt?: string // ISO, set by completeProject
   identityId?: string // the "who I'm becoming" statement this quest votes for; a missing/deleted identity = unlinked
+  projectOrder?: number // projects only: manual position on the Projects grid (unset = auto, after ordered ones)
 }
 
 export type CompletionKind = 'quest' | 'card' | 'project'

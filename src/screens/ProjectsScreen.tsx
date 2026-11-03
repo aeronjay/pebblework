@@ -1,14 +1,32 @@
-import { Plus } from 'lucide-react'
+import {
+  closestCenter,
+  DndContext,
+  DragOverlay,
+  KeyboardSensor,
+  MouseSensor,
+  TouchSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+  type DragStartEvent,
+} from '@dnd-kit/core'
+import { rectSortingStrategy, SortableContext, sortableKeyboardCoordinates, useSortable } from '@dnd-kit/sortable'
+import { CSS } from '@dnd-kit/utilities'
+import { GripHorizontal, Plus } from 'lucide-react'
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
 import { useEffect, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { useToday } from '../app/useToday'
-import { useProjects } from '../features/board/hooks'
+import { useProjects, type ProjectSummary } from '../features/board/hooks'
+import { arrayMove } from '../features/board/components/model'
 import { ProjectCard } from '../features/projects/ProjectCard'
 import { ProjectsEmpty } from '../features/projects/ProjectsEmpty'
-import { FILTERS, filterProjects, sortProjects, type ProjectFilter } from '../features/projects/model'
+import { FILTERS, filterProjects, mergeShownOrder, sortProjects, type ProjectFilter } from '../features/projects/model'
 import { dayKey } from '../features/quests/day'
 import { QuestSheet, type SheetTarget } from '../features/quests/components/QuestSheet'
 import { ToastProvider } from '../features/quests/components/Toast'
+import { useToast } from '../features/quests/components/toastContext'
+import { reorderProjects } from '../features/quests/repo'
 import { ui } from '../ui/styles'
 
 export function ProjectsScreen() {
@@ -27,6 +45,15 @@ function Projects() {
   const reduce = useReducedMotion()
   const [filter, setFilter] = useState<ProjectFilter>('all')
   const [sheet, setSheet] = useState<SheetTarget | null>(null)
+  const toast = useToast()
+  // Optimistic order (every project's id) until the live query catches up (same `all` array = not yet).
+  const [order, setOrder] = useState<{ ids: string[]; base: ProjectSummary[] } | null>(null)
+  const [dragId, setDragId] = useState<string | null>(null)
+  const sensors = useSensors(
+    useSensor(MouseSensor, { activationConstraint: { distance: 6 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 6 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  )
 
   const create = () => setSheet({ mode: 'create', category: filter === 'mq' ? 'mq' : 'sq', project: true })
 
@@ -43,8 +70,36 @@ function Projects() {
     return () => window.removeEventListener('keydown', onKey)
   }, [sheet, filter])
 
-  const sorted = all ? sortProjects(all) : []
+  const auto = all ? sortProjects(all) : []
+  const byId = new Map(auto.map((p) => [p.quest.id, p]))
+  const pending = !!order && order.base === all
+  const sorted = pending && order ? order.ids.map((id) => byId.get(id)).filter((p): p is ProjectSummary => !!p) : auto
   const shown = filterProjects(sorted, filter)
+  const shownIds = shown.map((p) => p.quest.id)
+  const dragged = dragId ? byId.get(dragId) : undefined
+
+  // Open and completed projects stay apart (completed ones always sort last), so a drop across them does nothing.
+  async function onDragEnd({ active, over }: DragEndEvent) {
+    setDragId(null)
+    if (!over || active.id === over.id || !all) return
+    const from = shownIds.indexOf(String(active.id))
+    const to = shownIds.indexOf(String(over.id))
+    if (from < 0 || to < 0) return
+    if (!!shown[from].quest.projectDoneAt !== !!shown[to].quest.projectDoneAt) {
+      toast.show('Completed projects stay at the end.', 'info')
+      return
+    }
+    const ids = mergeShownOrder(
+      sorted.map((p) => p.quest.id),
+      arrayMove(shownIds, from, to),
+    )
+    setOrder({ ids, base: all })
+    const ok = await toast.run(async () => {
+      await reorderProjects(ids)
+      return true
+    })
+    if (!ok) setOrder(null)
+  }
   const open = sorted.filter((p) => !p.quest.projectDoneAt).length
   const count = (f: ProjectFilter) => filterProjects(sorted, f).length
 
@@ -109,29 +164,80 @@ function Projects() {
               </button>
             </div>
           ) : (
-            <ul className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-              <AnimatePresence initial={false} mode="popLayout">
-                {shown.map((p) => (
-                  <motion.li
-                    key={p.quest.id}
-                    layout={!reduce}
-                    initial={reduce ? false : { opacity: 0, scale: 0.98 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    exit={reduce ? { opacity: 0, transition: { duration: 0 } } : { opacity: 0, scale: 0.98, transition: { duration: 0.15 } }}
-                    transition={{ type: 'spring', bounce: 0, duration: 0.35 }}
-                    className="min-w-0"
-                  >
-                    <ProjectCard project={p} todayKey={todayKey} />
-                  </motion.li>
-                ))}
-              </AnimatePresence>
-            </ul>
+            <DndContext
+              sensors={sensors}
+              collisionDetection={closestCenter}
+              onDragStart={({ active }: DragStartEvent) => setDragId(String(active.id))}
+              onDragEnd={onDragEnd}
+              onDragCancel={() => setDragId(null)}
+              accessibility={{
+                screenReaderInstructions: {
+                  draggable: 'Press Space to pick up a project, arrow keys to move it, Space to drop, Escape to cancel.',
+                },
+              }}
+            >
+              <SortableContext items={shownIds} strategy={rectSortingStrategy}>
+                <ul className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+                  <AnimatePresence initial={false} mode="popLayout">
+                    {shown.map((p) => (
+                      <SortableProject key={p.quest.id} project={p} todayKey={todayKey} sorting={!!dragId || pending} />
+                    ))}
+                  </AnimatePresence>
+                </ul>
+              </SortableContext>
+              {createPortal(
+                <DragOverlay zIndex={60}>
+                  {dragged ? (
+                    <div className="rotate-[1.5deg] cursor-grabbing rounded-card shadow-pop">
+                      <ProjectCard project={dragged} todayKey={todayKey} />
+                    </div>
+                  ) : null}
+                </DragOverlay>,
+                document.body,
+              )}
+            </DndContext>
           )}
         </>
       )}
 
       <QuestSheet target={sheet} todayKey={todayKey} onClose={() => setSheet(null)} />
     </div>
+  )
+}
+
+// One grid cell: the card plus a grip (outside the card's link) to drag it to a new position.
+function SortableProject({ project, todayKey, sorting }: { project: ProjectSummary; todayKey: string; sorting: boolean }) {
+  const reduce = useReducedMotion()
+  const { setNodeRef, setActivatorNodeRef, attributes, listeners, transform, transition, isDragging } = useSortable({ id: project.quest.id })
+  // While sorting, dnd-kit owns the movement; motion's layout animation would fight it.
+  return (
+    <motion.li
+      layout={!reduce && !sorting}
+      initial={reduce ? false : { opacity: 0, scale: 0.98 }}
+      animate={{ opacity: 1, scale: 1 }}
+      exit={reduce || sorting ? { opacity: 0, transition: { duration: 0 } } : { opacity: 0, scale: 0.98, transition: { duration: 0.15 } }}
+      transition={{ type: 'spring', bounce: 0, duration: 0.35 }}
+      className="group/cell min-w-0"
+    >
+      <div
+        ref={setNodeRef}
+        style={{ transform: CSS.Translate.toString(transform), transition: reduce ? undefined : transition }}
+        className={`relative ${isDragging ? 'opacity-40' : ''}`}
+      >
+        <ProjectCard project={project} todayKey={todayKey} />
+        <button
+          ref={setActivatorNodeRef}
+          type="button"
+          {...attributes}
+          {...listeners}
+          aria-roledescription="draggable project"
+          aria-label={`Reorder “${project.quest.title}”`}
+          className="absolute top-1 left-1/2 z-10 grid h-5 w-10 -translate-x-1/2 cursor-grab touch-none place-items-center rounded-md text-faint opacity-0 transition outline-none group-hover/cell:opacity-100 hover:bg-sunken hover:text-ink focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-ring active:cursor-grabbing pointer-coarse:opacity-60"
+        >
+          <GripHorizontal aria-hidden className="size-4" strokeWidth={1.75} />
+        </button>
+      </div>
+    </motion.li>
   )
 }
 

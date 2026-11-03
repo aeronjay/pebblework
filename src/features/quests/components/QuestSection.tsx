@@ -1,19 +1,27 @@
-import { ChevronDown, Plus } from 'lucide-react'
+import { useDroppable } from '@dnd-kit/core'
+import { SortableContext, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable'
+import { CSS } from '@dnd-kit/utilities'
+import { ChevronDown, GripVertical, Plus } from 'lucide-react'
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
-import { useId, useState } from 'react'
+import { useId, useState, type ReactNode } from 'react'
 import type { QuestCategory } from '../../../db/types'
 import type { QuestItem } from '../hooks'
 import { CATEGORY } from '../meta'
 import { moveQuest } from '../repo'
 import type { ProjectSummary } from '../../board/hooks'
 import { isProject } from '../day'
+import { isEarlier } from './lists'
 import { ProjectRow } from './ProjectRow'
-import { QuestRow } from './QuestRow'
+import { QuestRow, type RowDrag } from './QuestRow'
 import { useToast } from './toastContext'
 
 interface Props {
   category: QuestCategory
   items: QuestItem[] // this category's live quests, in stored order
+  ids: string[] // the visible (draggable) quests in display order; mid-drag it can hold a quest from another list
+  lookup: ReadonlyMap<string, QuestItem> // every live quest by id
+  sorting: boolean // a drag is in flight (or its result is being saved)
+  dropTarget: boolean // the dragged quest came from another list and would land here
   todayKey: string
   claimed: boolean
   open: boolean
@@ -29,19 +37,17 @@ const EMPTY: Record<QuestCategory, { title: string; body: string; cta: string }>
   sq: { title: 'The side roads are quiet', body: 'Errands, curiosities, little detours. Jot them here.', cta: 'Add a side quest' },
 }
 
-// Done-earlier and already-redone quests fold into a quiet tail so the list stays about what's next.
-function isEarlier(i: QuestItem) {
-  return i.when === 'past' || (i.missed && !!i.quest.redoneAs)
-}
-
-export function QuestSection({ category, items, todayKey, claimed, open, onToggle, onAdd, onEdit, projects }: Props) {
+export function QuestSection(props: Props) {
+  const { category, items, ids, lookup, sorting, dropTarget, todayKey, claimed, open, onToggle, onAdd, onEdit, projects } = props
   const meta = CATEGORY[category]
   const reduce = useReducedMotion()
   const toast = useToast()
   const panelId = useId()
   const [showEarlier, setShowEarlier] = useState(false)
+  // The whole section takes drops, so a quest can land in a collapsed or empty list (at its end).
+  const { setNodeRef } = useDroppable({ id: category })
 
-  const current = items.filter((i) => !isEarlier(i))
+  const current = ids.map((id) => lookup.get(id)).filter((i): i is QuestItem => !!i)
   const earlier = items.filter(isEarlier)
   // Same basis as the day summary: what today asks for, plus anything done today (undated quests never block a day).
   const actionable = current.filter((i) => i.when === 'today' || i.doneToday)
@@ -62,7 +68,11 @@ export function QuestSection({ category, items, todayKey, claimed, open, onToggl
   const spring = reduce ? { duration: 0 } : { type: 'spring' as const, bounce: 0, duration: 0.42 }
 
   return (
-    <section>
+    <section
+      ref={setNodeRef}
+      className={`-m-1.5 rounded-[22px] p-1.5 transition-colors duration-150 ${dropTarget ? 'bg-sunken/70 ring-2 ring-[var(--drop)]' : ''}`}
+      style={{ ['--drop' as string]: meta.color }}
+    >
       <h2>
         <button
           type="button"
@@ -115,30 +125,37 @@ export function QuestSection({ category, items, todayKey, claimed, open, onToggl
             className="overflow-hidden"
           >
             <div className="mt-1 rounded-card border border-line bg-surface px-1.5 pt-1.5 pb-2 sm:px-2">
-              {items.length === 0 ? (
+              {current.length === 0 && earlier.length === 0 ? (
                 <EmptyState category={category} onAdd={onAdd} />
               ) : (
                 <>
                   {current.length === 0 && <p className="px-3 py-3 text-[13px] text-faint">Nothing open here. Nicely done.</p>}
-                  <ul>
-                    <AnimatePresence initial={false}>
-                      {current.map((item, i) => {
-                        const shared = {
-                          item,
-                          todayKey,
-                          onEdit: () => onEdit(item),
-                          onMove: (d: -1 | 1) => move(item, d),
-                          canMoveUp: i > 0,
-                          canMoveDown: i < current.length - 1,
-                        }
-                        return isProject(item.quest) ? (
-                          <ProjectRow key={item.quest.id} summary={projects?.get(item.quest.id)} {...shared} />
-                        ) : (
-                          <QuestRow key={item.quest.id} claimed={claimed} {...shared} />
-                        )
-                      })}
-                    </AnimatePresence>
-                  </ul>
+                  <SortableContext items={ids} strategy={verticalListSortingStrategy}>
+                    <ul>
+                      <AnimatePresence initial={false}>
+                        {current.map((item, i) => (
+                          <SortableQuest key={item.quest.id} id={item.quest.id} title={item.quest.title} sorting={sorting}>
+                            {(drag) => {
+                              const shared = {
+                                item,
+                                todayKey,
+                                drag,
+                                onEdit: () => onEdit(item),
+                                onMove: (d: -1 | 1) => move(item, d),
+                                canMoveUp: !sorting && i > 0,
+                                canMoveDown: !sorting && i < current.length - 1,
+                              }
+                              return isProject(item.quest) ? (
+                                <ProjectRow summary={projects?.get(item.quest.id)} {...shared} />
+                              ) : (
+                                <QuestRow claimed={claimed} {...shared} />
+                              )
+                            }}
+                          </SortableQuest>
+                        ))}
+                      </AnimatePresence>
+                    </ul>
+                  </SortableContext>
                   <div className="flex items-center justify-between gap-2 px-1 pt-0.5">
                     <AddButton label={EMPTY[category].cta} onClick={onAdd} />
                     {earlier.length > 0 && (
@@ -180,6 +197,32 @@ export function QuestSection({ category, items, todayKey, claimed, open, onToggl
       </AnimatePresence>
     </section>
   )
+}
+
+// Wires one row into drag and drop: the row renders the grip and takes the transform on its inner box (the <li>
+// keeps motion's enter/exit; its layout animation is off while sorting so it doesn't fight dnd-kit).
+function SortableQuest({ id, title, sorting, children }: { id: string; title: string; sorting: boolean; children: (drag: RowDrag) => ReactNode }) {
+  const reduce = useReducedMotion()
+  const { setNodeRef, setActivatorNodeRef, attributes, listeners, transform, transition, isDragging } = useSortable({ id })
+  return children({
+    ref: setNodeRef,
+    style: { transform: CSS.Translate.toString(transform), transition: reduce ? undefined : transition },
+    dragging: isDragging,
+    sorting,
+    handle: (
+      <button
+        ref={setActivatorNodeRef}
+        type="button"
+        {...attributes}
+        {...listeners}
+        aria-roledescription="draggable quest"
+        aria-label={`Reorder “${title}”`}
+        className="absolute top-1/2 -left-[5px] z-10 grid h-8 w-4 -translate-y-1/2 cursor-grab touch-none place-items-center rounded-md text-faint opacity-0 transition outline-none group-hover/row:opacity-100 hover:text-ink focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-ring active:cursor-grabbing pointer-coarse:opacity-50"
+      >
+        <GripVertical aria-hidden className="size-3.5" strokeWidth={1.75} />
+      </button>
+    ),
+  })
 }
 
 function AddButton({ label, onClick }: { label: string; onClick: () => void }) {
