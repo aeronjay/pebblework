@@ -10,7 +10,7 @@ import { CATEGORY } from '../meta'
 import { moveQuest } from '../repo'
 import type { ProjectSummary } from '../../board/hooks'
 import { isProject } from '../day'
-import { isEarlier } from './lists'
+import { dayCount, isEarlier } from './lists'
 import { ProjectRow } from './ProjectRow'
 import { QuestRow, type RowDrag } from './QuestRow'
 import { useToast } from './toastContext'
@@ -29,6 +29,7 @@ interface Props {
   onAdd: () => void
   onEdit: (item: QuestItem) => void
   projects?: ReadonlyMap<string, ProjectSummary> // board summaries by quest id (undefined while loading)
+  bare?: boolean // the list on its own tab: no accordion header, always open
 }
 
 const EMPTY: Record<QuestCategory, { title: string; body: string; cta: string }> = {
@@ -38,7 +39,7 @@ const EMPTY: Record<QuestCategory, { title: string; body: string; cta: string }>
 }
 
 export function QuestSection(props: Props) {
-  const { category, items, ids, lookup, sorting, dropTarget, todayKey, claimed, open, onToggle, onAdd, onEdit, projects } = props
+  const { category, items, ids, lookup, sorting, dropTarget, todayKey, claimed, open, onToggle, onAdd, onEdit, projects, bare } = props
   const meta = CATEGORY[category]
   const reduce = useReducedMotion()
   const toast = useToast()
@@ -49,11 +50,10 @@ export function QuestSection(props: Props) {
 
   const current = ids.map((id) => lookup.get(id)).filter((i): i is QuestItem => !!i)
   const earlier = items.filter(isEarlier)
-  // Same basis as the day summary: what today asks for, plus anything done today (undated quests never block a day).
-  const actionable = current.filter((i) => i.when === 'today' || i.doneToday)
-  const doneCount = actionable.filter((i) => i.done).length
+  // Same basis as the day summary (see dayCount).
+  const { done: doneCount, total: dueCount } = dayCount(current)
   const later = current.filter((i) => i.when === 'upcoming').length
-  const allDone = actionable.length > 0 && doneCount === actionable.length
+  const allDone = dueCount > 0 && doneCount === dueCount
 
   // Neighbors in the visible list may be separated by hidden ones; step past them.
   async function move(item: QuestItem, direction: -1 | 1) {
@@ -73,6 +73,7 @@ export function QuestSection(props: Props) {
       className={`-m-1.5 rounded-[22px] p-1.5 transition-colors duration-150 ${dropTarget ? 'bg-sunken/70 ring-2 ring-[var(--drop)]' : ''}`}
       style={{ ['--drop' as string]: meta.color }}
     >
+      {!bare && (
       <h2>
         <button
           type="button"
@@ -87,14 +88,14 @@ export function QuestSection(props: Props) {
             <span className="mt-0.5 block text-[13px] leading-snug text-muted sm:truncate">{meta.blurb}</span>
           </span>
           <span className="flex shrink-0 items-center gap-2.5">
-            {actionable.length > 0 ? (
+            {dueCount > 0 ? (
               <span
                 className={`text-[13px] font-medium tabular-nums transition-colors ${allDone ? '' : 'text-muted'}`}
                 style={allDone ? { color: meta.ink } : undefined}
-                aria-label={`${doneCount} of ${actionable.length} done`}
+                aria-label={`${doneCount} of ${dueCount} done`}
               >
                 {doneCount}
-                <span className="text-faint">/{actionable.length}</span>
+                <span className="text-faint">/{dueCount}</span>
               </span>
             ) : later > 0 ? (
               <span className="text-[13px] text-faint tabular-nums">{later} later</span>
@@ -110,21 +111,22 @@ export function QuestSection(props: Props) {
           </span>
         </button>
       </h2>
+      )}
 
       <AnimatePresence initial={false}>
-        {open && (
+        {(open || bare) && (
           <motion.div
             id={panelId}
-            role="region"
-            aria-label={meta.label}
+            role={bare ? undefined : 'region'}
+            aria-label={bare ? undefined : meta.label}
             key="panel"
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: 'auto', opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
             transition={{ height: spring, opacity: reduce ? { duration: 0 } : { duration: 0.2 } }}
-            className="overflow-hidden"
+            className={bare ? undefined : 'overflow-hidden'}
           >
-            <div className="mt-1 rounded-card border border-line bg-surface px-1.5 pt-1.5 pb-2 sm:px-2">
+            <div className={`${bare ? '' : 'mt-1 '}rounded-card border border-line bg-surface px-1.5 pt-1.5 pb-2 sm:px-2`}>
               {current.length === 0 && earlier.length === 0 ? (
                 <EmptyState category={category} onAdd={onAdd} />
               ) : (

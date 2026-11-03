@@ -43,7 +43,7 @@ function Home() {
 
   const todayKey = quests?.todayKey ?? format(today, 'yyyy-MM-dd')
 
-  // Two zones: the desk (what to do: today, in progress, the quest lists) and the stage (what you've earned: the jar and
+  // Two zones: the desk (what to do: today, in progress, the quest lists behind their Today / All / per-list tabs) and the stage (what you've earned: the jar and
   // the calendar you claim from), on its own panel that follows the app theme.
   // `tall` (≥1024 wide and ≥700 high): a no-scroll app shell; only the quest list scrolls. `lg` but short: the same two
   // columns, with page scroll. Below lg both zones dissolve (display: contents) into one column ordered by `order-*`:
@@ -78,7 +78,7 @@ function Home() {
             <InProgressStrip todayKey={todayKey} />
           </div>
 
-          {/* The one scroll region of the shell. Side padding + negative margin keep focus rings from being clipped. */}
+          {/* The one scroll region of the shell (the quest tabs stick to its top). Side padding + negative margin keep focus rings from being clipped. */}
           <div className="order-4 min-w-0 lg:-mx-3 lg:px-3 lg:pb-12 tall:min-h-0 tall:flex-1 tall:overflow-y-auto tall:[scrollbar-gutter:stable]">
             {quests ? (
               <QuestLists

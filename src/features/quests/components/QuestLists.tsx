@@ -15,7 +15,7 @@ import {
   type DragStartEvent,
 } from '@dnd-kit/core'
 import { sortableKeyboardCoordinates } from '@dnd-kit/sortable'
-import { useCallback, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useId, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useProjects } from '../../board/hooks'
 import { arrayMove } from '../../board/components/model'
@@ -23,11 +23,23 @@ import type { QuestCategory } from '../../../db/types'
 import type { QuestItem, QuestToday } from '../hooks'
 import { CATEGORY, CATEGORY_ORDER } from '../meta'
 import { placeQuest } from '../repo'
-import { isCategory, listOf, listsOf, moveTo, refusal, type Lists } from './lists'
+import { isCategory, isQuestView, listOf, listsOf, moveTo, refusal, tabCategory, viewTabId, type Lists, type QuestView } from './lists'
 import { QuestSection } from './QuestSection'
+import { QuestTabs } from './QuestTabs'
+import { TodayList } from './TodayList'
 import { useToast } from './toastContext'
 
 const OPEN_KEY = 'quests:open-sections'
+const VIEW_KEY = 'quests:view'
+
+function readView(): QuestView {
+  try {
+    const v = localStorage.getItem(VIEW_KEY)
+    return isQuestView(v) ? v : 'today'
+  } catch {
+    return 'today'
+  }
+}
 
 function readOpen(): Record<QuestCategory, boolean> {
   const all = { dq: true, mq: true, sq: true }
@@ -45,10 +57,14 @@ interface Props {
   onEdit: (item: QuestItem) => void
 }
 
-// The DQ / MQ / SQ accordions. Any number can be open; the choice is remembered per device.
-// Quests drag to reorder within a list, and main and side quests can be dragged into each other's list.
+// The quest lists behind a tab bar: Today (what's due today across every list, the default), All (the DQ / MQ / SQ
+// accordions stacked, any number open) and one tab per list. The tab and the open accordions are remembered per device.
+// Quests drag to reorder within a list. Main and side quests move between lists by dragging across the stacked
+// accordions, or, on a single list's tab, onto the other list's tab.
 export function QuestLists({ today, onAdd, onEdit }: Props) {
   const [open, setOpen] = useState(readOpen)
+  const [view, setView] = useState(readView)
+  const baseId = useId()
   const toast = useToast()
   const summaries = useProjects()
   const projects = useMemo(() => (summaries ? new Map(summaries.map((p) => [p.quest.id, p])) : undefined), [summaries])
@@ -75,17 +91,30 @@ export function QuestLists({ today, onAdd, onEdit }: Props) {
 
   // A quest under the pointer wins; over a list (its header, gaps, or when collapsed/empty) its nearest quest, else the
   // list itself (= drop at its end).
+  // A view tab under the pointer wins over everything (it only takes drops on a single list's tab).
   const collision: CollisionDetection = useCallback((args) => {
     const hits = pointerWithin(args)
-    const pool = hits.length ? hits : closestCorners(args)
+    const tab = hits.find((c) => tabCategory(c.id))
+    if (tab) return [tab]
+    const lists = { ...args, droppableContainers: args.droppableContainers.filter((c) => !tabCategory(c.id)) }
+    const pool = hits.length ? hits : closestCorners(lists)
     const item = pool.find((c) => !isCategory(c.id))
     if (item) return [item]
     const list = pool[0]
     if (!list) return []
     const ids = listsRef.current[list.id as QuestCategory] ?? []
-    const near = closestCenter({ ...args, droppableContainers: args.droppableContainers.filter((c) => ids.includes(String(c.id))) })[0]
+    const near = closestCenter({ ...args, droppableContainers: lists.droppableContainers.filter((c) => ids.includes(String(c.id))) })[0]
     return [near ?? list]
   }, [])
+
+  function pick(v: QuestView) {
+    setView(v)
+    try {
+      localStorage.setItem(VIEW_KEY, v)
+    } catch {
+      // Private mode etc.
+    }
+  }
 
   function toggle(c: QuestCategory) {
     setOpen((prev) => {
@@ -107,7 +136,7 @@ export function QuestLists({ today, onAdd, onEdit }: Props) {
   // Crossing into another list happens live, so the rows there make room for it.
   function onDragOver({ active, over }: DragOverEvent) {
     const item = lookup.get(String(active.id))
-    if (!over || !item) return
+    if (!over || !item || tabCategory(over.id)) return
     const id = item.quest.id
     const overId = String(over.id)
     setHeld((h) => {
@@ -132,6 +161,25 @@ export function QuestLists({ today, onAdd, onEdit }: Props) {
     if (!over || !item) return setHeld(null)
     const id = item.quest.id
     const overId = String(over.id)
+    // Dropped on another list's tab: it goes to the end of that list.
+    const tab = tabCategory(overId)
+    if (tab) {
+      const why = refusal(item, tab)
+      if (why || tab === item.quest.category) {
+        if (why) toast.show(why, 'info')
+        return setHeld(null)
+      }
+      const cur2 = moveTo(cur, id, tab, cur[tab].length)
+      setHeld({ lists: cur2, base: today.items })
+      const ok = await toast.run(async () => {
+        await placeQuest(id, tab, null)
+        return true
+      })
+      if (ok) toast.show(`Moved to ${CATEGORY[tab].label}s.`, 'info')
+      else setHeld(null)
+      return
+    }
+
     const to = listOf(cur, id)
     if (!to) return setHeld(null)
 
@@ -178,25 +226,49 @@ export function QuestLists({ today, onAdd, onEdit }: Props) {
         },
       }}
     >
-      <div className="flex flex-col gap-6">
-        {CATEGORY_ORDER.map((c) => (
-          <QuestSection
-            key={c}
-            category={c}
-            items={today.items.filter((i) => i.quest.category === c)}
-            ids={lists[c]}
-            lookup={lookup}
-            sorting={!!activeId || pending}
-            dropTarget={!!active && activeList === c && active.quest.category !== c}
+      <div className="sticky top-0 z-10 -mx-1 bg-canvas px-1 pt-1 pb-3">
+        <QuestTabs
+          view={view}
+          onView={pick}
+          items={today.items}
+          baseId={baseId}
+          dragging={view !== 'today' && view !== 'all' ? active : undefined}
+          canDrop={(c) => !!active && !refusal(active, c)}
+        />
+      </div>
+      <div role="tabpanel" id={`${baseId}-panel`} aria-labelledby={viewTabId(baseId, view)}>
+        {view === 'today' ? (
+          <TodayList
+            items={today.items}
             todayKey={today.todayKey}
             claimed={today.claimed}
-            open={open[c]}
-            onToggle={() => toggle(c)}
-            onAdd={() => onAdd(c)}
+            onAdd={() => onAdd('dq')}
             onEdit={onEdit}
-            projects={projects}
+            onBrowse={() => pick('all')}
           />
-        ))}
+        ) : (
+          <div className="flex flex-col gap-6">
+            {(view === 'all' ? CATEGORY_ORDER : [view]).map((c) => (
+              <QuestSection
+                key={c}
+                category={c}
+                items={today.items.filter((i) => i.quest.category === c)}
+                ids={lists[c]}
+                lookup={lookup}
+                sorting={!!activeId || pending}
+                dropTarget={view === 'all' && !!active && activeList === c && active.quest.category !== c}
+                todayKey={today.todayKey}
+                claimed={today.claimed}
+                open={open[c]}
+                onToggle={() => toggle(c)}
+                onAdd={() => onAdd(c)}
+                onEdit={onEdit}
+                projects={projects}
+                bare={view !== 'all'}
+              />
+            ))}
+          </div>
+        )}
       </div>
       {createPortal(
         <DragOverlay zIndex={60}>{active && <DragPreview item={active} list={activeList ?? active.quest.category} />}</DragOverlay>,

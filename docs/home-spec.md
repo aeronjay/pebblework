@@ -34,7 +34,11 @@ Three-column layout:
 | **SQ — Side Quest** | Optional, low-stakes, nice-to-have | Errands, "if I have time" items |
 
 **Functional requirements:**
-- DQ / MQ / SQ are section headers in the middle column. Clicking one filters/expands its task list in place (accordion-style), rather than navigating elsewhere.
+- The middle column has a tab bar: **Today | All | Daily | Main | Side**. The chosen tab is remembered per device.
+  - **Today** (default): only what today asks for, across all three categories (due today, done today, plus missed quests that can still be redone), each row tagged with its category. Quests already finished fold into an "N done today" line, so the list shrinks as the day goes; one ticked while the tab is open stays in place until you leave it.
+  - **All**: the DQ / MQ / SQ section headers stacked, each expanding/collapsing its list in place (accordion-style). Main and side quests can be dragged between the stacked lists.
+  - **Daily / Main / Side**: one category's full list, for reordering and managing. Drag a main or side quest onto the other one's tab to move it there.
+  - Each tab shows a count (done/due today, else how many are open), on the same basis as the day's progress bar.
 - Each quest item needs: title, category, completion status, optional due date/time.
 - **Each category has its own distinct visual treatment** (color + icon), carried through consistently into the calendar and jar (see 3.3).
 

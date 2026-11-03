@@ -41,3 +41,42 @@ export function moveTo(lists: Lists, id: string, to: QuestCategory, index: numbe
   next[to].splice(Math.max(0, Math.min(next[to].length, index)), 0, id)
   return next
 }
+
+// What today asks for: quests due today, plus anything finished today (undated quests never block a day).
+// One basis for the day summary, the Today tab and each list's count.
+export function isDueToday(i: QuestItem): boolean {
+  return i.when === 'today' || i.doneToday
+}
+
+export function dayCount(items: QuestItem[]): { done: number; total: number } {
+  const due = items.filter(isDueToday)
+  return { done: due.filter((i) => i.done).length, total: due.length }
+}
+
+// The Today tab: what's due today, plus missed quests that can still be redone today.
+export function todayItems(items: QuestItem[]): QuestItem[] {
+  return items.filter((i) => isDueToday(i) || (i.missed && !i.quest.redoneAs))
+}
+
+// The Home quest views. 'all' is the stacked lists; a category shows that one list.
+export type QuestView = 'today' | 'all' | QuestCategory
+
+export function isQuestView(v: unknown): v is QuestView {
+  return v === 'today' || v === 'all' || isCategory(v)
+}
+
+export function viewTabId(base: string, v: QuestView): string {
+  return `${base}-tab-${v}`
+}
+
+// Drop targets on the view tabs are told apart from the lists (which use the bare category as their id).
+const TAB = 'tab:'
+export function tabDropId(v: QuestView): string {
+  return TAB + v
+}
+
+export function tabCategory(id: unknown): QuestCategory | undefined {
+  if (typeof id !== 'string' || !id.startsWith(TAB)) return undefined
+  const c = id.slice(TAB.length)
+  return isCategory(c) ? c : undefined
+}

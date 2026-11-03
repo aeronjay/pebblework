@@ -1,11 +1,12 @@
 import type { QuestToday } from '../hooks'
 import { CATEGORY, CATEGORY_ORDER } from '../meta'
+import { isDueToday } from './lists'
 
 // Today at a glance: one sentence and one segment per quest the day asks for (finished ones take their stone's color).
 // Same basis as the section counts: quests due today plus anything finished today.
 export function DayProgress({ today }: { today: QuestToday }) {
   const day = today.items
-    .filter((i) => i.when === 'today' || i.doneToday)
+    .filter(isDueToday)
     .sort((a, b) => Number(b.done) - Number(a.done) || CATEGORY_ORDER.indexOf(a.quest.category) - CATEGORY_ORDER.indexOf(b.quest.category))
   const total = day.length
   const done = day.filter((i) => i.done).length

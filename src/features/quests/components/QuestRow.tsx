@@ -3,6 +3,7 @@ import { motion } from 'motion/react'
 import type { CSSProperties, ReactNode } from 'react'
 import { completeQuest, doItToday, uncompleteQuest } from '../repo'
 import type { QuestItem } from '../hooks'
+import { CATEGORY } from '../meta'
 import { describeQuest, formatDay } from './describe'
 import { useCompleteFeedback } from './feedback'
 import { QuestCheck, type CheckState } from './QuestCheck'
@@ -27,6 +28,7 @@ interface Props {
   onMove?: (direction: -1 | 1) => void
   canMoveUp?: boolean
   canMoveDown?: boolean
+  showCategory?: boolean // in a mixed list (Today): name the quest's list before the caption
 }
 
 function checkState(item: QuestItem, todayKey: string, claimed: boolean): { state: CheckState; reason?: string } {
@@ -40,7 +42,7 @@ function checkState(item: QuestItem, todayKey: string, claimed: boolean): { stat
   return { state: 'doneFixed', reason: item.doneToday && claimed ? 'Today is claimed, so this stays done' : 'Completed on an earlier day' }
 }
 
-export function QuestRow({ item, todayKey, claimed, drag, onEdit, onMove, canMoveUp, canMoveDown }: Props) {
+export function QuestRow({ item, todayKey, claimed, drag, onEdit, onMove, canMoveUp, canMoveDown, showCategory }: Props) {
   const { quest } = item
   const toast = useToast()
   const feedback = useCompleteFeedback()
@@ -85,7 +87,17 @@ export function QuestRow({ item, todayKey, claimed, drag, onEdit, onMove, canMov
           >
             {quest.title}
           </p>
-          {caption && <p className="mt-0.5 truncate text-[13px] leading-5 text-muted">{caption}</p>}
+          {(caption || showCategory) && (
+            <p className="mt-0.5 truncate text-[13px] leading-5 text-muted">
+              {showCategory && (
+                <span className="font-medium" style={{ color: CATEGORY[quest.category].ink }}>
+                  {CATEGORY[quest.category].label}
+                  {caption && ', '}
+                </span>
+              )}
+              {showCategory && caption ? caption.charAt(0).toLowerCase() + caption.slice(1) : caption}
+            </p>
+          )}
           {quest.note && (
             <p className="mt-1 flex gap-1.5 text-[12.5px] leading-5 text-muted">
               <StickyNote aria-hidden className="mt-[3px] size-3 shrink-0 text-faint" strokeWidth={1.75} />
