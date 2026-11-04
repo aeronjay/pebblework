@@ -2,6 +2,7 @@ import { format } from 'date-fns'
 import { Plus } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { useToday } from '../app/useToday'
+import { BackupNudge } from '../features/backup/BackupNudge'
 import { QuestCalendar } from '../features/calendar/QuestCalendar'
 import { InProgressStrip } from '../features/focus/InProgressStrip'
 import { QuestJar } from '../features/jar/QuestJar'
@@ -74,7 +75,8 @@ function Home() {
             <div className="mt-6 min-h-[46px]">{quests && <DayProgress today={quests} />}</div>
           </header>
 
-          <div className="order-2 min-w-0">
+          <div className="order-2 flex min-w-0 flex-col gap-4">
+            <BackupNudge />
             <InProgressStrip todayKey={todayKey} />
           </div>
 

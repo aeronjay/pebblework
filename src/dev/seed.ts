@@ -42,7 +42,8 @@ export async function seed(database: MarbleDB = db, mode: SeedMode = 'demo', now
 
   await database.transaction('rw', database.tables, async () => {
     await Promise.all(database.tables.map((t) => t.clear()))
-    await database.settings.put(DEFAULT_SETTINGS)
+    // A recent backup, so demo screens (and README captures) don't show the backup reminder.
+    await database.settings.put({ ...DEFAULT_SETTINGS, lastExportAt: now.toISOString() })
   })
 
   // Phase A: an older routine that fills (and seals) the first quest jar, then gets retired.

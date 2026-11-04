@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { freshDb } from '../test/db'
 import { DEFAULT_SETTINGS, newId, newMeta } from './db'
-import { BackupError, exportBackup, importBackup, parseBackup } from './backup'
+import { BackupError, backupDue, exportBackup, importBackup, parseBackup, snoozeBackupReminder } from './backup'
 import { claimAll } from '../features/quests/claim'
 
 describe('backup', () => {
@@ -22,7 +22,7 @@ describe('backup', () => {
     expect(goals).toHaveLength(1)
     expect(goals[0].title).toBe('Read')
     expect(await target.checkIns.count()).toBe(1)
-    expect(await target.settings.get('settings')).toEqual(DEFAULT_SETTINGS)
+    expect(await target.settings.get('settings')).toEqual({ ...DEFAULT_SETTINGS, lastExportAt: JSON.parse(json).exportedAt })
   })
 
   it('round-trips quest tables', async () => {
@@ -49,7 +49,7 @@ describe('backup', () => {
     const v1 = { app: 'marble-jar', schemaVersion: 1, exportedAt: new Date().toISOString(), data: { goals: [], settings: [DEFAULT_SETTINGS] } }
     await importBackup(parseBackup(JSON.stringify(v1)), target)
     expect(await target.quests.count()).toBe(0)
-    expect(await target.settings.get('settings')).toEqual(DEFAULT_SETTINGS)
+    expect(await target.settings.get('settings')).toEqual({ ...DEFAULT_SETTINGS, lastExportAt: v1.exportedAt })
   })
 
   it('round-trips board tables', async () => {
@@ -141,5 +141,41 @@ describe('backup', () => {
     expect(() => parseBackup('{"app":"other"}')).toThrow(BackupError)
     expect(() => parseBackup('{"app":"marble-jar","schemaVersion":999,"data":{}}')).toThrow(/newer version/)
     expect(() => parseBackup('{"app":"marble-jar","schemaVersion":1,"data":{"goals":5}}')).toThrow(/malformed/)
+  })
+})
+
+describe('backup reminder', () => {
+  const now = new Date('2026-11-10T12:00:00Z')
+  const daysAgo = (n: number) => new Date(now.getTime() - n * 86_400_000).toISOString()
+  const daysAhead = (n: number) => daysAgo(-n)
+
+  it('waits for two weeks of history, then asks until a backup is under a month old', () => {
+    expect(backupDue(undefined, undefined, now)).toBe(false)
+    expect(backupDue(undefined, daysAgo(13), now)).toBe(false)
+    expect(backupDue(undefined, daysAgo(14), now)).toBe(true)
+    expect(backupDue({ lastExportAt: daysAgo(29) }, daysAgo(90), now)).toBe(false)
+    expect(backupDue({ lastExportAt: daysAgo(30) }, daysAgo(90), now)).toBe(true)
+  })
+
+  it('stays quiet while snoozed', () => {
+    expect(backupDue({ backupSnoozedUntil: daysAhead(1) }, daysAgo(90), now)).toBe(false)
+    expect(backupDue({ backupSnoozedUntil: daysAgo(1) }, daysAgo(90), now)).toBe(true)
+  })
+
+  it('snoozes for two weeks even before the settings row exists', async () => {
+    const d = freshDb()
+    await snoozeBackupReminder(now, d)
+    expect((await d.settings.get('settings'))?.backupSnoozedUntil).toBe(daysAhead(14))
+  })
+})
+
+describe('restoring a backup', () => {
+  it('counts the restored file as the latest backup', async () => {
+    const source = freshDb()
+    await source.settings.put({ ...DEFAULT_SETTINGS, lastExportAt: '2026-01-01T00:00:00.000Z' })
+    const backup = await exportBackup(source)
+    const target = freshDb()
+    await importBackup(parseBackup(JSON.stringify(backup)), target)
+    expect((await target.settings.get('settings'))?.lastExportAt).toBe(backup.exportedAt)
   })
 })

@@ -1,6 +1,6 @@
 import type Dexie from 'dexie'
-import { db, markClaimedFromDayClaims, type MarbleDB } from './db'
-import type { DayClaim, QuestCompletion } from './types'
+import { db, getSettings, markClaimedFromDayClaims, type MarbleDB } from './db'
+import type { DayClaim, QuestCompletion, Settings } from './types'
 
 // Internal format id from before the Pebblework rename. Kept so existing backups keep importing; never shown to users.
 export const BACKUP_APP = 'marble-jar'
@@ -80,6 +80,12 @@ export async function importBackup(backup: Backup, database: MarbleDB = db): Pro
     const marked = new Map(markClaimedFromDayClaims(completions, (data.dayClaims ?? []) as DayClaim[]).map((c) => [c.id, c]))
     data.questCompletions = completions.map((c) => marked.get(c.id) ?? c)
   }
+  // The file was written before its own export was recorded, so its settings carry the previous backup date.
+  // Restoring from it means this data is backed up as of the file's export time.
+  const settings = data.settings as Settings[] | undefined
+  if (settings?.length) {
+    data.settings = settings.map((s) => (!s.lastExportAt || s.lastExportAt < backup.exportedAt ? { ...s, lastExportAt: backup.exportedAt } : s))
+  }
   await database.transaction('rw', TABLES.map((t) => database[t]), async () => {
     for (const t of TABLES) {
       await database[t].clear()
@@ -98,6 +104,38 @@ export async function downloadBackup(database: MarbleDB = db): Promise<void> {
   a.download = `pebblework-backup-${backup.exportedAt.slice(0, 10)}.json`
   a.click()
   URL.revokeObjectURL(url)
-  const settings = (await database.settings.get('settings'))
-  if (settings) await database.settings.put({ ...settings, lastExportAt: backup.exportedAt })
+  // The settings row may not exist yet (it's created on first visit to Settings); record the export either way.
+  await database.settings.put({ ...(await getSettings(database)), lastExportAt: backup.exportedAt })
+}
+
+export const BACKUP_EVERY_DAYS = 30
+export const BACKUP_GRACE_DAYS = 14 // don't ask until there's two weeks of history worth keeping
+export const BACKUP_SNOOZE_DAYS = 14
+const DAY_MS = 24 * 60 * 60 * 1000
+
+// Whether Home should suggest a backup: there's been data for a couple of weeks, the last export is missing or a
+// month old, and the reminder isn't snoozed.
+export function backupDue(
+  settings: Pick<Settings, 'lastExportAt' | 'backupSnoozedUntil'> | undefined,
+  firstDataAt: string | undefined,
+  now: Date,
+): boolean {
+  const t = now.getTime()
+  if (!firstDataAt || t - Date.parse(firstDataAt) < BACKUP_GRACE_DAYS * DAY_MS) return false
+  if (settings?.backupSnoozedUntil && Date.parse(settings.backupSnoozedUntil) > t) return false
+  return !settings?.lastExportAt || t - Date.parse(settings.lastExportAt) >= BACKUP_EVERY_DAYS * DAY_MS
+}
+
+// When the oldest quest was made (deleted ones included: their history still lives in the jar).
+export async function firstDataAt(database: MarbleDB = db): Promise<string | undefined> {
+  let first: string | undefined
+  await database.quests.each((q) => {
+    if (!first || q.createdAt < first) first = q.createdAt
+  })
+  return first
+}
+
+export async function snoozeBackupReminder(now: Date = new Date(), database: MarbleDB = db): Promise<void> {
+  const until = new Date(now.getTime() + BACKUP_SNOOZE_DAYS * DAY_MS).toISOString()
+  await database.settings.put({ ...(await getSettings(database)), backupSnoozedUntil: until })
 }

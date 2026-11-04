@@ -137,6 +137,7 @@ export interface Settings {
   weeklyReviewDay: number
   theme: 'system' | 'light' | 'dark'
   lastExportAt?: string
+  backupSnoozedUntil?: string // ISO; the Home backup reminder stays quiet until then
 }
 
 export type QuestCategory = 'dq' | 'mq' | 'sq'
