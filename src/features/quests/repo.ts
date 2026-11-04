@@ -1,7 +1,7 @@
 import { db, getDeviceId, newId, newMeta, type MarbleDB } from '../../db/db'
-import type { Quest, QuestCategory, QuestCompletion } from '../../db/types'
+import type { Quest, QuestCategory, QuestCompletion, ScheduleSpan } from '../../db/types'
 import { createProjectBoard } from '../board/repo'
-import { CATEGORY_ORDER, canComplete, completionId, dayKey, isMissed, isProject, isQuestCompletion } from './day'
+import { CATEGORY_ORDER, canComplete, completionId, dayKey, isEveryDay, isMissed, isProject, isQuestCompletion, normalizeDays, scheduleOn } from './day'
 import { QuestError } from './errors'
 
 export { QuestError }
@@ -13,6 +13,7 @@ export interface QuestInput {
   dueTime?: string
   note?: string
   startDate?: string // DQ only; today or later (default today)
+  days?: number[] // DQ only; weekdays it runs (0 = Sunday). Omitted or all 7 = every day.
   isProject?: boolean // MQ/SQ only; creates the default board. dueDate becomes a display-only deadline.
 }
 
@@ -24,10 +25,29 @@ export interface QuestPatch {
   dueDate?: string | null
   order?: number
   identityId?: string | null
+  days?: number[] // DQ only; takes effect from today (past days keep their schedule)
 }
 
 function stamp(now: Date) {
   return { updatedAt: now.toISOString(), deviceId: getDeviceId() }
+}
+
+function cleanDays(days: number[]): number[] {
+  const out = normalizeDays(days)
+  if (!out.length) throw new QuestError('Pick at least one day.')
+  return out
+}
+
+// The schedule after changing to `days` from `today`: spans before today are kept as they are, anything from today on
+// is replaced. Returns undefined when the quest runs every day with no history worth keeping.
+export function nextSchedule(q: Quest, days: number[], today: string): ScheduleSpan[] | undefined {
+  const from = q.startDate > today ? q.startDate : today
+  const kept = (q.schedule ?? []).filter((s) => s.from < from)
+  const before = kept.length ? kept[kept.length - 1].days : undefined
+  const spans = before && before.join() === days.join() ? kept : [...kept, { from, days }]
+  // Every day from the start, with nothing earlier: the plain default.
+  if (spans.every((s) => isEveryDay(s.days))) return undefined
+  return spans
 }
 
 function cleanTitle(title: string): string {
@@ -56,6 +76,8 @@ export async function createQuest(input: QuestInput, now: Date = new Date(), dat
   if (startDate < today) throw new QuestError('A daily quest cannot start in the past.')
   if (!isDQ && input.dueDate && input.dueDate < today) throw new QuestError('Due date cannot be in the past.')
   if (input.isProject && isDQ) throw new QuestError('Only main and side quests can be projects.')
+  if (input.days && !isDQ) throw new QuestError('Only daily quests have a weekly schedule.')
+  const days = input.days ? cleanDays(input.days) : undefined
   const id = newId()
   await database.transaction('rw', database.quests, database.boardColumns, async () => {
     const quest: Quest = {
@@ -64,6 +86,7 @@ export async function createQuest(input: QuestInput, now: Date = new Date(), dat
       title,
       order: await nextOrder(input.category, database),
       startDate,
+      schedule: days && !isEveryDay(days) ? [{ from: startDate, days }] : undefined,
       dueDate: isDQ ? undefined : input.dueDate || undefined,
       dueTime: input.dueTime || undefined,
       note: input.note?.trim() || undefined,
@@ -86,6 +109,12 @@ export async function updateQuest(id: string, patch: QuestPatch, now: Date = new
     if (patch.note !== undefined) changes.note = patch.note?.trim() || undefined
     if (patch.dueTime !== undefined) changes.dueTime = patch.dueTime || undefined
     if (patch.identityId !== undefined) changes.identityId = patch.identityId || undefined
+    if (patch.days !== undefined) {
+      if (q.category !== 'dq') throw new QuestError('Only daily quests have a weekly schedule.')
+      const days = cleanDays(patch.days)
+      const from = q.startDate > today ? q.startDate : today
+      if (days.join() !== scheduleOn(q, from).join()) changes.schedule = nextSchedule(q, days, today)
+    }
     if (patch.dueDate !== undefined && (patch.dueDate || undefined) !== q.dueDate) {
       const next = patch.dueDate || undefined
       if (q.category === 'dq') throw new QuestError('Daily quests have no due date.')

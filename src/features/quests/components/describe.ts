@@ -1,6 +1,6 @@
 import { differenceInCalendarDays, format, parse } from 'date-fns'
 import type { Quest } from '../../../db/types'
-import { isoToDayKey, isProject, parseDayKey } from '../day'
+import { isEveryDay, isoToDayKey, isProject, nextScheduledDay, parseDayKey, scheduleOn } from '../day'
 import type { QuestItem } from '../hooks'
 
 export function formatTime(hhmm: string): string {
@@ -21,6 +21,24 @@ export function formatDay(key: string, todayKey: string): string {
   return format(d, d.getFullYear() === parseDayKey(todayKey).getFullYear() ? 'MMM d' : 'MMM d, yyyy')
 }
 
+const DAY_SHORT = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+
+// "Every day", "Weekdays", "Weekends", or "Mon, Wed, Fri" (Monday first).
+export function scheduleLabel(days: number[]): string {
+  const key = days.join()
+  if (isEveryDay(days)) return 'Every day'
+  if (key === '1,2,3,4,5') return 'Weekdays'
+  if (key === '0,6') return 'Weekends'
+  return [...days].sort((a, b) => ((a + 6) % 7) - ((b + 6) % 7)).map((d) => DAY_SHORT[d]).join(', ')
+}
+
+// Why a daily quest isn't on today: it hasn't started, or today is a rest day.
+export function dqRestLine(q: Quest, todayKey: string): string {
+  if (q.startDate > todayKey) return `Starts ${formatDay(q.startDate, todayKey)}`
+  const next = nextScheduledDay(q, todayKey)
+  return next ? `Rest day, back ${formatDay(next, todayKey).replace(/^Tomorrow$/, 'tomorrow')}` : 'Rest day'
+}
+
 // The quiet meta line under a quest title.
 export function describeQuest(item: QuestItem, todayKey: string): string {
   const q: Quest = item.quest
@@ -29,11 +47,12 @@ export function describeQuest(item: QuestItem, todayKey: string): string {
   const parts: string[] = []
   switch (item.when) {
     case 'today':
-      // A daily quest due today needs no caption: its section already says it's daily.
+      // A daily quest due today needs no caption (its section already says it's daily), unless it skips some days.
       if (q.category !== 'dq') parts.push('Due today')
+      else if (!isEveryDay(scheduleOn(q, todayKey))) parts.push(scheduleLabel(scheduleOn(q, todayKey)))
       break
     case 'upcoming':
-      parts.push(q.category === 'dq' ? `Starts ${formatDay(q.startDate, todayKey)}` : `Due ${formatDay(q.dueDate!, todayKey)}`)
+      parts.push(q.category === 'dq' ? dqRestLine(q, todayKey) : `Due ${formatDay(q.dueDate!, todayKey)}`)
       break
     case 'anytime':
       parts.push(item.done ? 'Done today' : 'Anytime')

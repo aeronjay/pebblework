@@ -4,11 +4,11 @@ import { useEffect, useId, useRef, useState, type FormEvent, type KeyboardEvent 
 import type { QuestCategory } from '../../../db/types'
 import { ProjectsIcon } from '../../../app/icons/NavIcons'
 import { href, navigate } from '../../../app/router'
-import { addDaysToKey, isProject } from '../day'
+import { EVERY_DAY, addDaysToKey, isEveryDay, isProject, normalizeDays, scheduleOn } from '../day'
 import type { QuestItem } from '../hooks'
 import { CATEGORY, CATEGORY_ORDER } from '../meta'
 import { createQuest, deleteQuest, updateQuest } from '../repo'
-import { formatDay } from './describe'
+import { formatDay, scheduleLabel } from './describe'
 import { neighborOfRow } from './focus'
 import { useToast } from './toastContext'
 
@@ -52,6 +52,9 @@ function Sheet({ target, todayKey, onClose }: { target: SheetTarget; todayKey: s
   const [dueDate, setDueDate] = useState(q?.dueDate ?? '')
   const [dueTime, setDueTime] = useState(q?.dueTime ?? '')
   const [note, setNote] = useState(q?.note ?? '')
+  // The schedule as of today (or the start day, for one that hasn't started).
+  const scheduleFrom = q && q.startDate > todayKey ? q.startDate : todayKey
+  const [days, setDays] = useState<number[]>(q ? scheduleOn(q, scheduleFrom) : EVERY_DAY)
   const [project, setProject] = useState(q ? isProject(q) : target.mode === 'create' && !!target.project)
   const [saving, setSaving] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
@@ -122,6 +125,7 @@ function Sheet({ target, todayKey, onClose }: { target: SheetTarget; todayKey: s
           category,
           title,
           dueDate: isDQ ? undefined : dueDate || undefined,
+          days: isDQ && !isEveryDay(days) ? days : undefined,
           dueTime: asProject ? undefined : dueTime || undefined,
           note: note || undefined,
           isProject: asProject || undefined,
@@ -135,6 +139,7 @@ function Sheet({ target, todayKey, onClose }: { target: SheetTarget; todayKey: s
           note: note.trim() ? note : null,
           dueTime: dueTime || null,
           ...(dateChanged ? { dueDate: dueDate || null } : {}),
+          ...(isDQ && days.join() !== scheduleOn(q, scheduleFrom).join() ? { days } : {}),
         })
       }
       return true
@@ -232,12 +237,18 @@ function Sheet({ target, todayKey, onClose }: { target: SheetTarget; todayKey: s
             )}
 
             {isDQ ? (
-              <div className="flex items-center gap-3 rounded-control border border-line bg-sunken/60 px-3.5 py-3">
-                <Repeat aria-hidden className="size-4 text-dq-ink" strokeWidth={1.75} />
-                <div className="text-[13px]">
-                  <p className="font-medium text-ink">Repeats daily</p>
-                  <p className="text-muted">Resets every morning. Check it off once per day.</p>
-                </div>
+              <div>
+                <span className={labelCls} id={`${titleId}-days`}>
+                  Repeats
+                </span>
+                <WeekdayPicker value={days} onChange={setDays} labelledBy={`${titleId}-days`} />
+                <p className="mt-1.5 flex items-center gap-1.5 text-[12px] text-muted">
+                  <Repeat aria-hidden className="size-3 text-dq-ink" strokeWidth={2} />
+                  {isEveryDay(days)
+                    ? 'Every day. Resets each morning.'
+                    : `${scheduleLabel(days)}. Other days are rest days and never hold up a day.`}
+                  {q && days.join() !== scheduleOn(q, scheduleFrom).join() && ' Past days keep their old schedule.'}
+                </p>
               </div>
             ) : (
               <div>
@@ -365,6 +376,63 @@ function Sheet({ target, todayKey, onClose }: { target: SheetTarget; todayKey: s
           </div>
         </form>
       </motion.div>
+    </div>
+  )
+}
+
+const WEEKDAYS: { day: number; short: string; long: string }[] = [
+  { day: 1, short: 'M', long: 'Monday' },
+  { day: 2, short: 'T', long: 'Tuesday' },
+  { day: 3, short: 'W', long: 'Wednesday' },
+  { day: 4, short: 'T', long: 'Thursday' },
+  { day: 5, short: 'F', long: 'Friday' },
+  { day: 6, short: 'S', long: 'Saturday' },
+  { day: 0, short: 'S', long: 'Sunday' },
+]
+
+// Seven toggles, Monday first. The last selected day can't be turned off (a daily quest needs at least one).
+function WeekdayPicker({ value, onChange, labelledBy }: { value: number[]; onChange: (days: number[]) => void; labelledBy: string }) {
+  const presets = [
+    { label: 'Every day', days: EVERY_DAY },
+    { label: 'Weekdays', days: [1, 2, 3, 4, 5] },
+  ]
+  return (
+    <div className="flex flex-wrap items-center gap-2">
+      <div role="group" aria-labelledby={labelledBy} className="flex gap-1 rounded-control bg-sunken p-1">
+        {WEEKDAYS.map((d) => {
+          const on = value.includes(d.day)
+          const last = on && value.length === 1
+          return (
+            <button
+              key={d.day}
+              type="button"
+              aria-pressed={on}
+              aria-label={d.long}
+              title={last ? 'Keep at least one day' : d.long}
+              onClick={() => !last && onChange(normalizeDays(on ? value.filter((x) => x !== d.day) : [...value, d.day]))}
+              className={`grid size-8 place-items-center rounded-[9px] text-[12.5px] font-semibold transition outline-none focus-visible:ring-2 focus-visible:ring-ring ${on ? 'bg-surface text-dq-ink shadow-card' : 'text-muted hover:text-ink'} ${last ? 'cursor-default' : ''}`}
+            >
+              {d.short}
+            </button>
+          )
+        })}
+      </div>
+      <div className="flex gap-1" role="group" aria-label="Schedule presets">
+        {presets.map((p) => {
+          const active = value.join() === p.days.join()
+          return (
+            <button
+              key={p.label}
+              type="button"
+              aria-pressed={active}
+              onClick={() => onChange(p.days)}
+              className={`rounded-[9px] px-2.5 py-1.5 text-[12.5px] font-medium transition outline-none focus-visible:ring-2 focus-visible:ring-ring ${active ? 'bg-sunken text-ink' : 'text-muted hover:bg-sunken hover:text-ink'}`}
+            >
+              {p.label}
+            </button>
+          )
+        })}
+      </div>
     </div>
   )
 }

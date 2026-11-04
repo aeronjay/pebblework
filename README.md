@@ -68,7 +68,7 @@ The rest of the app follows a few rules:
 
 | | |
 |---|---|
-| **Quests** | Three kinds, each with its own color and stone: **Daily** (rituals that reset every morning), **Main** (the big moves), and **Side** (errands, if time allows). Press <kbd>N</kbd> anywhere on Home to add one. |
+| **Quests** | Three kinds, each with its own color and stone: **Daily** (rituals on the days you pick: every day, weekdays, or Mon/Wed/Fri), **Main** (the big moves), and **Side** (errands, if time allows). Press <kbd>N</kbd> anywhere on Home to add one. |
 | **Quest calendar** | A month grid that marks each day as pending, ready to claim, or claimed. One **Claim** button sweeps up every finished day at once. Heavier days drop more stones, like a GitHub contribution graph. |
 | **The jar** | A physics-simulated jar (matter-js) where stones drop, bounce and settle. Its capacity scales with your quest load. Now and then a stone comes out golden. |
 | **Projects** | Break bigger goals into Kanban boards with draggable columns, cards and subtasks. Every stage you finish earns a stone. |

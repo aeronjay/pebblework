@@ -4,7 +4,7 @@ import type { CSSProperties, ReactNode } from 'react'
 import { completeQuest, doItToday, uncompleteQuest } from '../repo'
 import type { QuestItem } from '../hooks'
 import { CATEGORY } from '../meta'
-import { describeQuest, formatDay } from './describe'
+import { describeQuest, dqRestLine, formatDay } from './describe'
 import { useCompleteFeedback } from './feedback'
 import { QuestCheck, type CheckState } from './QuestCheck'
 import { RowActions } from './RowActions'
@@ -36,6 +36,7 @@ function checkState(item: QuestItem, todayKey: string, claimed: boolean): { stat
   if (item.missed) return { state: 'missed', reason: `Missed on ${formatDay(q.dueDate!, todayKey)}. Past days stay as they were.` }
   if (!item.done) {
     if (item.canComplete) return { state: 'open' }
+    if (q.category === 'dq') return { state: 'locked', reason: dqRestLine(q, todayKey) }
     return { state: 'locked', reason: 'Can only be completed on its due day' }
   }
   if (item.canUncomplete) return { state: 'done' }
@@ -95,7 +96,8 @@ export function QuestRow({ item, todayKey, claimed, drag, onEdit, onMove, canMov
                   {caption && ', '}
                 </span>
               )}
-              {showCategory && caption ? caption.charAt(0).toLowerCase() + caption.slice(1) : caption}
+              {/* Day names keep their capital ("Daily Quest, Mon, Wed, Fri"). */}
+              {showCategory && caption && !/^(Mon|Tue|Wed|Thu|Fri|Sat|Sun)\b/.test(caption) ? caption.charAt(0).toLowerCase() + caption.slice(1) : caption}
             </p>
           )}
           {quest.note && (

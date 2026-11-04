@@ -141,12 +141,20 @@ export interface Settings {
 
 export type QuestCategory = 'dq' | 'mq' | 'sq'
 
+// A daily quest's weekdays (0 = Sunday), in effect from `from` (a dayKey) until the next span. Edits append a span
+// from today, so past days keep the schedule they had.
+export interface ScheduleSpan {
+  from: string
+  days: number[] // sorted, unique, 1–7 entries; all 7 = every day
+}
+
 export interface Quest extends Meta {
   id: string
   category: QuestCategory
   title: string
   order: number
   startDate: string // dayKey; DQ active from this day. For MQ/SQ = creation day.
+  schedule?: ScheduleSpan[] // DQ only, sorted by `from`; unset = every day
   dueDate?: string // dayKey; MQ/SQ only
   dueTime?: string // "HH:mm", optional, display only
   note?: string

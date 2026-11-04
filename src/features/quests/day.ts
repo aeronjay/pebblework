@@ -104,12 +104,56 @@ export function isUndated(q: Quest): boolean {
   return q.category !== 'dq' && (!q.dueDate || isProject(q))
 }
 
+export const EVERY_DAY = [0, 1, 2, 3, 4, 5, 6]
+
+// Sorted, unique weekdays; throws nothing (callers validate emptiness).
+export function normalizeDays(days: number[]): number[] {
+  return [...new Set(days.filter((d) => Number.isInteger(d) && d >= 0 && d <= 6))].sort((a, b) => a - b)
+}
+
+export function isEveryDay(days: number[]): boolean {
+  return days.length === 7
+}
+
+// The weekdays a daily quest runs on as of `key` (the latest span starting on or before it). Every day if unset.
+export function scheduleOn(q: Quest, key: string): number[] {
+  let days = EVERY_DAY
+  for (const s of q.schedule ?? []) if (s.from <= key) days = s.days
+  return days
+}
+
+function weekdayOf(key: string): number {
+  return parseDayKey(key).getDay()
+}
+
+export function isScheduledOn(q: Quest, key: string): boolean {
+  return scheduleOn(q, key).includes(weekdayOf(key))
+}
+
+// The next day on or after `from` that a daily quest runs (not before its start date). Searches 8 weeks out.
+export function nextScheduledDay(q: Quest, from: string): string | undefined {
+  let key = q.startDate > from ? q.startDate : from
+  for (let i = 0; i < 56; i++, key = addDaysToKey(key, 1)) if (isScheduledOn(q, key)) return key
+  return undefined
+}
+
 // Deleting a quest removes it from its deletion day onward; earlier days keep it. Projects are never assigned.
 export function isAssigned(q: Quest, key: string): boolean {
   if (isProject(q)) return false
   if (q.deletedAt && isoToDayKey(q.deletedAt) <= key) return false
-  if (q.category === 'dq') return q.startDate <= key
+  if (q.category === 'dq') return q.startDate <= key && isScheduledOn(q, key)
   return q.dueDate === key
+}
+
+// A day nothing was asked of because every daily quest live then was resting (and nothing else was due). Runs skip
+// these instead of breaking on them.
+export function isRestDay(quests: Quest[], key: string): boolean {
+  let resting = false
+  for (const q of quests) {
+    if (isAssigned(q, key)) return false
+    if (q.category === 'dq' && q.startDate <= key && !(q.deletedAt && isoToDayKey(q.deletedAt) <= key)) resting = true
+  }
+  return resting
 }
 
 // Live completions of the quest itself (card/project completions never mark the quest done).
@@ -149,7 +193,7 @@ export function isMissed(q: Quest, completions: QuestCompletion[], now: Date): b
 
 export function questWhen(q: Quest, completions: QuestCompletion[], now: Date): QuestWhen {
   const today = dayKey(now)
-  if (q.category === 'dq') return q.startDate > today ? 'upcoming' : 'today'
+  if (q.category === 'dq') return isAssigned(q, today) ? 'today' : 'upcoming'
   if (isProject(q)) return q.projectDoneAt && isoToDayKey(q.projectDoneAt) < today ? 'past' : 'anytime'
   if (q.dueDate) {
     if (q.dueDate === today) return 'today'
@@ -228,10 +272,11 @@ export function jarCapacityFor(quests: Quest[], now: Date, completions: QuestCom
   const today = dayKey(now)
   const horizon = addDaysToKey(today, CAPACITY_WINDOW_DAYS - 1)
   const live = quests.filter((q) => !q.deletedAt)
-  const activeDQ = live.filter((q) => q.category === 'dq').length
+  // A daily quest counts its scheduled days per week, twice (every day = 14, Mon/Wed/Fri = 6).
+  const activeDQ = live.filter((q) => q.category === 'dq').reduce((n, q) => n + scheduleOn(q, today).length / 7, 0)
   const dueSoon = live.filter((q) => q.category !== 'dq' && !isUndated(q) && q.dueDate && q.dueDate >= today && q.dueDate <= horizon).length
   const openUndated = live.filter((q) => isUndated(q) && (isProject(q) ? !q.projectDoneAt : liveFor(q, completions).length === 0)).length
-  const raw = activeDQ * DQ_CAPACITY_DAYS + dueSoon + openUndated
+  const raw = Math.round(activeDQ * DQ_CAPACITY_DAYS) + dueSoon + openUndated
   return Math.min(CAPACITY_MAX, Math.max(CAPACITY_MIN, raw))
 }
 

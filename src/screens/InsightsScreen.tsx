@@ -6,8 +6,8 @@ import { useToday } from '../app/useToday'
 import { CategoryBars, ColumnChart, Tile, type Column } from '../features/insights/charts'
 import { computeInsights, streakLine, type Insights } from '../features/insights/model'
 import { CATEGORY } from '../features/quests/meta'
-import { dayKey, parseDayKey } from '../features/quests/day'
-import { liveCompletions } from '../features/quests/repo'
+import { dayKey, isRestDay, parseDayKey } from '../features/quests/day'
+import { allQuests, liveCompletions } from '../features/quests/repo'
 import { sealedQuestJarCount } from '../features/quests/claim'
 
 const WEEKDAY = (weekday: number) => new Date(2026, 0, 4 + weekday) // Jan 4, 2026 is a Sunday
@@ -18,9 +18,9 @@ export function InsightsScreen() {
   const today = useToday()
   const todayKey = dayKey(today)
   const data = useLiveQuery(async () => {
-    const [completions, jarsFilled] = await Promise.all([liveCompletions(), sealedQuestJarCount()])
+    const [completions, jarsFilled, quests] = await Promise.all([liveCompletions(), sealedQuestJarCount(), allQuests()])
     return {
-      insights: computeInsights(completions, today),
+      insights: computeInsights(completions, today, (key) => isRestDay(quests, key)),
       doneToday: completions.some((c) => c.dayKey === todayKey),
       jarsFilled,
     }
@@ -87,7 +87,7 @@ function Body({ insights: i, doneToday, jarsFilled }: { insights: Insights; done
     <div className="flex flex-col gap-4">
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4 lg:gap-4">
         <Tile label="Current run" value={i.currentStreak} unit={i.currentStreak === 1 ? 'day' : 'days'} note={streakLine(i.currentStreak, i.bestStreak, doneToday)} />
-        <Tile label="Longest run" value={i.bestStreak} unit={i.bestStreak === 1 ? 'day' : 'days'} note="Days in a row with at least one finished quest." />
+        <Tile label="Longest run" value={i.bestStreak} unit={i.bestStreak === 1 ? 'day' : 'days'} note="Days in a row with at least one finished quest. Rest days don’t break a run." />
         <Tile label="Days you showed up" value={i.activeDays.toLocaleString()} note="Every one of them counts, in a row or not." />
         <Tile
           label="Quests finished"

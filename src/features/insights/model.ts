@@ -13,30 +13,41 @@ export function activeDays(completions: QuestCompletion[]): Set<string> {
   return new Set(live(completions).map((c) => c.dayKey))
 }
 
+// A day that neither extends nor breaks a run (a daily quest's rest day with nothing done).
+export type RestDay = (key: string) => boolean
+const noRest: RestDay = () => false
+
 // Consecutive active days ending today, or ending yesterday while today is still open (today never breaks a streak
-// until it's over).
-export function currentStreak(days: ReadonlySet<string>, now: Date): number {
-  const today = dayKey(now)
-  let key = days.has(today) ? today : addDaysToKey(today, -1)
-  let n = 0
-  while (days.has(key)) {
-    n++
-    key = addDaysToKey(key, -1)
+// until it's over). Rest days in between are skipped: they don't count, and they don't break the run.
+export function currentStreak(days: ReadonlySet<string>, now: Date, rest: RestDay = noRest): number {
+  const first = [...days].sort()[0]
+  if (!first) return 0
+  let key = addDaysToKey(dayKey(now), -1)
+  let n = days.has(dayKey(now)) ? 1 : 0
+  for (; key >= first; key = addDaysToKey(key, -1)) {
+    if (days.has(key)) n++
+    else if (!rest(key)) break
   }
   return n
 }
 
-export function bestStreak(days: ReadonlySet<string>): number {
+export function bestStreak(days: ReadonlySet<string>, rest: RestDay = noRest): number {
   const sorted = [...days].sort()
   let best = 0
   let run = 0
   let prev: string | undefined
   for (const k of sorted) {
-    run = prev && addDaysToKey(prev, 1) === k ? run + 1 : 1
+    run = prev && bridged(prev, k, rest) ? run + 1 : 1
     best = Math.max(best, run)
     prev = k
   }
   return best
+}
+
+// Whether every day strictly between two active days is a rest day.
+function bridged(from: string, to: string, rest: RestDay): boolean {
+  for (let k = addDaysToKey(from, 1); k < to; k = addDaysToKey(k, 1)) if (!rest(k)) return false
+  return true
 }
 
 export interface WeekdayStat {
@@ -112,7 +123,7 @@ export interface Insights {
   weeks: WeekCount[]
 }
 
-export function computeInsights(completions: QuestCompletion[], now: Date): Insights {
+export function computeInsights(completions: QuestCompletion[], now: Date, rest: RestDay = noRest): Insights {
   const today = dayKey(now)
   const past = live(completions).filter((c) => c.dayKey <= today)
   const days = activeDays(past)
@@ -121,8 +132,8 @@ export function computeInsights(completions: QuestCompletion[], now: Date): Insi
   return {
     total: past.length,
     activeDays: days.size,
-    currentStreak: currentStreak(days, now),
-    bestStreak: bestStreak(days),
+    currentStreak: currentStreak(days, now, rest),
+    bestStreak: bestStreak(days, rest),
     weekdays,
     bestWeekday: bestWeekday(weekdays),
     categories,
