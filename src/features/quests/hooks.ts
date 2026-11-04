@@ -102,7 +102,7 @@ export interface QuestItem {
 export interface QuestToday extends DaySummary {
   todayKey: string
   claimed: boolean // today has been claimed at least once (it can be ready again; see `status`)
-  items: QuestItem[] // every live quest, sorted by category then order
+  items: QuestItem[] // every live quest except archived projects, sorted by category then order
 }
 
 // Everything the quest lists need for today. undefined while loading.
@@ -112,7 +112,7 @@ export function useQuestToday(): QuestToday | undefined {
   return useLiveQuery(async () => {
     const [all, completions, claim] = await Promise.all([allQuests(), liveCompletions(), db.dayClaims.get(todayKey)])
     const claimed = !!claim
-    const quests = await liveQuests()
+    const quests = (await liveQuests()).filter((q) => !q.archivedAt) // archived projects are filed away
     const byQuest = new Map<string, QuestCompletion[]>()
     for (const c of completions) if (isQuestCompletion(c)) byQuest.set(c.questId, [...(byQuest.get(c.questId) ?? []), c])
     const items = quests.map((quest): QuestItem => {

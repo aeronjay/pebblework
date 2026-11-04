@@ -163,6 +163,7 @@ export interface Quest extends Meta {
   redoneAs?: string // set on a missed quest when "Do it today" copied it; the copy's id
   isProject?: boolean // MQ/SQ only: has a kanban board; never assigned to a day (dueDate = display-only deadline)
   projectDoneAt?: string // ISO, set by completeProject
+  archivedAt?: string // ISO, set by archiveProject (completed projects only); hides it from Projects' main grid and Home
   identityId?: string // the "who I'm becoming" statement this quest votes for; a missing/deleted identity = unlinked
   projectOrder?: number // projects only: manual position on the Projects grid (unset = auto, after ordered ones)
 }

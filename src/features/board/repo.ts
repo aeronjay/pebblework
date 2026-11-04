@@ -449,14 +449,32 @@ export async function completeProject(questId: string, now: Date = new Date(), d
   })
 }
 
-// Clears projectDoneAt; withdraws the bonus only if it was stamped today and isn't claimed (else it stays, and
+// Clears projectDoneAt (and archivedAt: an open project is never archived); withdraws the bonus only if it was stamped today and isn't claimed (else it stays, and
 // completing again won't re-award). Returns whether the bonus was withdrawn. Throws if not complete.
 export async function reopenProject(questId: string, now: Date = new Date(), database: MarbleDB = db): Promise<boolean> {
   return database.transaction('rw', tables(database), async () => {
     const quest = await getProject(questId, database)
     if (!quest.projectDoneAt) throw new QuestError('This project is not complete.')
-    await database.quests.update(questId, { projectDoneAt: undefined, ...stamp(now) })
+    await database.quests.update(questId, { projectDoneAt: undefined, archivedAt: undefined, ...stamp(now) })
     return withdraw(projectCompletionId(questId), now, database)
+  })
+}
+
+// Files a completed project away: off the Projects grid's main list and Home. Stones and history are untouched.
+export async function archiveProject(questId: string, now: Date = new Date(), database: MarbleDB = db): Promise<void> {
+  await database.transaction('rw', database.quests, async () => {
+    const quest = await getProject(questId, database)
+    if (!quest.projectDoneAt) throw new QuestError('Only a completed project can be archived.')
+    if (quest.archivedAt) throw new QuestError('This project is already archived.')
+    await database.quests.update(questId, { archivedAt: now.toISOString(), ...stamp(now) })
+  })
+}
+
+export async function unarchiveProject(questId: string, now: Date = new Date(), database: MarbleDB = db): Promise<void> {
+  await database.transaction('rw', database.quests, async () => {
+    const quest = await getProject(questId, database)
+    if (!quest.archivedAt) throw new QuestError('This project is not archived.')
+    await database.quests.update(questId, { archivedAt: undefined, ...stamp(now) })
   })
 }
 
@@ -477,7 +495,7 @@ export async function loadBoard(questId: string, database: MarbleDB = db): Promi
   return { quest, columns, cardsByColumn, doneColumnId, progress: { done: cardsByColumn[doneColumnId]?.length ?? 0, total } }
 }
 
-// Every live project quest (complete ones included), sorted like the quest lists.
+// Every live project quest (complete and archived ones included), sorted like the quest lists.
 export async function loadProjects(database: MarbleDB = db): Promise<ProjectSummary[]> {
   const quests = (await database.quests.filter((q) => !q.deletedAt && isProject(q)).toArray()).sort(
     (a, b) => a.category.localeCompare(b.category) || a.order - b.order || a.createdAt.localeCompare(b.createdAt),

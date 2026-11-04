@@ -8,6 +8,7 @@ import {
   addCard,
   addColumn,
   addSubtask,
+  archiveProject,
   completeProject,
   createProjectBoard,
   deleteCard,
@@ -24,6 +25,7 @@ import {
   renameSubtask,
   reopenProject,
   toggleSubtask,
+  unarchiveProject,
   updateCard,
 } from './repo'
 
@@ -400,6 +402,30 @@ describe('complete / reopen project', () => {
     await claimAll(d, NOW, normal)
     expect(await reopenProject(p.id, at(D0, 20), d)).toBe(false)
     expect(await liveCompletions(d)).toHaveLength(1)
+  })
+})
+
+describe('archive project', () => {
+  it('archives only completed projects, keeps their stones, and reopening clears the archive', async () => {
+    const d = freshDb()
+    const p = await project(d)
+    await expect(archiveProject(p.id, NOW, d)).rejects.toThrow(QuestError) // still open
+    await completeProject(p.id, NOW, d)
+    await archiveProject(p.id, at(D0, 13), d)
+    expect((await d.quests.get(p.id))!.archivedAt).toBe(at(D0, 13).toISOString())
+    await expect(archiveProject(p.id, NOW, d)).rejects.toThrow(QuestError)
+    expect(await liveCompletions(d)).toHaveLength(1) // the bonus stays
+    expect((await loadProjects(d)).map((x) => x.quest.id)).toEqual([p.id]) // still listed (the screen splits it out)
+
+    await unarchiveProject(p.id, NOW, d)
+    expect((await d.quests.get(p.id))!.archivedAt).toBeUndefined()
+    await expect(unarchiveProject(p.id, NOW, d)).rejects.toThrow(QuestError)
+
+    await archiveProject(p.id, NOW, d)
+    await reopenProject(p.id, at(D0, 14), d)
+    const q = (await d.quests.get(p.id))!
+    expect(q.projectDoneAt).toBeUndefined()
+    expect(q.archivedAt).toBeUndefined()
   })
 })
 

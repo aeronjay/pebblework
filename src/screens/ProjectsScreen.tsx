@@ -12,7 +12,7 @@ import {
 } from '@dnd-kit/core'
 import { rectSortingStrategy, SortableContext, sortableKeyboardCoordinates, useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
-import { GripHorizontal, Plus } from 'lucide-react'
+import { Archive, ChevronDown, GripHorizontal, Plus } from 'lucide-react'
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
 import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
@@ -21,7 +21,7 @@ import { useProjects, type ProjectSummary } from '../features/board/hooks'
 import { arrayMove } from '../features/board/components/model'
 import { ProjectCard } from '../features/projects/ProjectCard'
 import { ProjectsEmpty } from '../features/projects/ProjectsEmpty'
-import { FILTERS, filterProjects, mergeShownOrder, sortProjects, type ProjectFilter } from '../features/projects/model'
+import { FILTERS, filterProjects, mergeShownOrder, sortProjects, splitArchived, type ProjectFilter } from '../features/projects/model'
 import { dayKey } from '../features/quests/day'
 import { QuestSheet, type SheetTarget } from '../features/quests/components/QuestSheet'
 import { ToastProvider } from '../features/quests/components/Toast'
@@ -49,6 +49,7 @@ function Projects() {
   // Optimistic order (every project's id) until the live query catches up (same `all` array = not yet).
   const [order, setOrder] = useState<{ ids: string[]; base: ProjectSummary[] } | null>(null)
   const [dragId, setDragId] = useState<string | null>(null)
+  const [showArchived, setShowArchived] = useState(false)
   const sensors = useSensors(
     useSensor(MouseSensor, { activationConstraint: { distance: 6 } }),
     useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 6 } }),
@@ -70,19 +71,21 @@ function Projects() {
     return () => window.removeEventListener('keydown', onKey)
   }, [sheet, filter])
 
-  const auto = all ? sortProjects(all) : []
+  const { active, archived } = splitArchived(all ?? [])
+  const auto = sortProjects(active)
   const byId = new Map(auto.map((p) => [p.quest.id, p]))
   const pending = !!order && order.base === all
   const sorted = pending && order ? order.ids.map((id) => byId.get(id)).filter((p): p is ProjectSummary => !!p) : auto
   const shown = filterProjects(sorted, filter)
+  const shownArchived = filterProjects(archived, filter)
   const shownIds = shown.map((p) => p.quest.id)
   const dragged = dragId ? byId.get(dragId) : undefined
 
   // Open and completed projects stay apart (completed ones always sort last), so a drop across them does nothing.
-  async function onDragEnd({ active, over }: DragEndEvent) {
+  async function onDragEnd({ active: dragged, over }: DragEndEvent) {
     setDragId(null)
-    if (!over || active.id === over.id || !all) return
-    const from = shownIds.indexOf(String(active.id))
+    if (!over || dragged.id === over.id || !all) return
+    const from = shownIds.indexOf(String(dragged.id))
     const to = shownIds.indexOf(String(over.id))
     if (from < 0 || to < 0) return
     if (!!shown[from].quest.projectDoneAt !== !!shown[to].quest.projectDoneAt) {
@@ -102,13 +105,18 @@ function Projects() {
   }
   const open = sorted.filter((p) => !p.quest.projectDoneAt).length
   const count = (f: ProjectFilter) => filterProjects(sorted, f).length
+  const label = (f: ProjectFilter) => (f === 'mq' ? 'main ' : f === 'sq' ? 'side ' : '')
 
   return (
     <div>
       <header className="mb-6 flex flex-wrap items-end justify-between gap-x-6 gap-y-4 md:mb-8">
         <div className="min-w-0">
           <p className="text-[15px] font-semibold text-muted">
-            {all ? (all.length ? `${open} open, ${all.length - open} completed` : 'Boards') : ' '}
+            {all
+              ? all.length
+                ? `${open} open, ${active.length - open} completed${archived.length ? `, ${archived.length} archived` : ''}`
+                : 'Boards'
+              : ' '}
           </p>
           <h1 className="mt-1.5 font-display text-[34px] leading-[1.05] font-normal tracking-[-0.025em] text-ink md:text-[42px]">
             Projects
@@ -156,11 +164,15 @@ function Projects() {
 
           {shown.length === 0 ? (
             <div className="rounded-card border border-dashed border-line-strong px-6 py-12 text-center">
-              <p className="font-display text-[18px] font-normal text-ink">No {filter === 'mq' ? 'main' : 'side'} projects yet</p>
-              <p className="mt-1 text-[13px] text-muted">Projects you start here get their own board.</p>
+              <p className="font-display text-[18px] font-normal text-ink">
+                {shownArchived.length ? `No open ${label(filter)}projects` : `No ${label(filter)}projects yet`}
+              </p>
+              <p className="mt-1 text-[13px] text-muted">
+                {shownArchived.length ? 'Everything here is archived. Start something new?' : 'Projects you start here get their own board.'}
+              </p>
               <button type="button" onClick={create} className={`${primary} mt-5`}>
                 <Plus aria-hidden className="size-4" strokeWidth={2} />
-                New {filter === 'mq' ? 'main' : 'side'} project
+                New {label(filter)}project
               </button>
             </div>
           ) : (
@@ -196,6 +208,32 @@ function Projects() {
                 document.body,
               )}
             </DndContext>
+          )}
+
+          {shownArchived.length > 0 && (
+            <section className="mt-10" aria-label="Archived projects">
+              <button
+                type="button"
+                aria-expanded={showArchived}
+                aria-controls="archived-projects"
+                onClick={() => setShowArchived((v) => !v)}
+                className="-ml-2 inline-flex items-center gap-2 rounded-lg px-2 py-1 text-[13.5px] font-medium text-muted transition outline-none hover:bg-sunken hover:text-ink focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                <Archive aria-hidden className="size-4" strokeWidth={1.75} />
+                Archived
+                <span className="text-[12px] text-faint tabular-nums">{shownArchived.length}</span>
+                <ChevronDown aria-hidden className={`size-4 transition-transform ${showArchived ? 'rotate-180' : ''}`} strokeWidth={1.75} />
+              </button>
+              {showArchived && (
+                <ul id="archived-projects" className="mt-4 grid gap-4 opacity-80 sm:grid-cols-2 xl:grid-cols-3">
+                  {shownArchived.map((p) => (
+                    <li key={p.quest.id} className="min-w-0">
+                      <ProjectCard project={p} todayKey={todayKey} />
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </section>
           )}
         </>
       )}

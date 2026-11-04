@@ -40,6 +40,12 @@ export function mergeShownOrder(fullIds: string[], shownIds: string[]): string[]
   return fullIds.map((id) => (shown.has(id) ? shownIds[i++] : id))
 }
 
+// Archived projects sit apart from the grid, most recently archived first.
+export function splitArchived(list: ProjectSummary[]): { active: ProjectSummary[]; archived: ProjectSummary[] } {
+  const archived = list.filter((p) => p.quest.archivedAt).sort((a, b) => b.quest.archivedAt!.localeCompare(a.quest.archivedAt!))
+  return { active: list.filter((p) => !p.quest.archivedAt), archived }
+}
+
 export function filterProjects(list: ProjectSummary[], filter: ProjectFilter): ProjectSummary[] {
   return filter === 'all' ? list : list.filter((p) => p.quest.category === filter)
 }

@@ -38,6 +38,7 @@ import type { BoardState } from '../hooks'
 import {
   addCard,
   addColumn,
+  archiveProject,
   completeProject,
   deleteCard,
   deleteColumn,
@@ -45,6 +46,7 @@ import {
   moveColumn,
   renameColumn,
   reopenProject,
+  unarchiveProject,
   type CardMoveResult,
 } from '../repo'
 import { CardFace } from './BoardCard'
@@ -330,6 +332,22 @@ export function Board({ board }: { board: BoardState }) {
     toast.show(withdrawn ? 'Project reopened — today’s bonus was returned.' : 'Project reopened.', 'info')
   }
 
+  async function runArchive() {
+    const ok = await toast.run(async () => {
+      await archiveProject(quest.id)
+      return true
+    })
+    if (ok) toast.show('Project archived. Find it under Archived on Projects.', 'info')
+  }
+
+  async function runUnarchive() {
+    const ok = await toast.run(async () => {
+      await unarchiveProject(quest.id)
+      return true
+    })
+    if (ok) toast.show('Project moved out of the archive.', 'info')
+  }
+
   async function runDeleteProject() {
     setConfirm(null)
     const ok = await toast.run(async () => {
@@ -400,6 +418,8 @@ export function Board({ board }: { board: BoardState }) {
           else void runComplete()
         }}
         onReopen={() => void runReopen()}
+        onArchive={() => void runArchive()}
+        onUnarchive={() => void runUnarchive()}
         onDelete={() => setConfirm('delete')}
       />
 

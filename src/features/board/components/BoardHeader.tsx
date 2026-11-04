@@ -1,5 +1,5 @@
 import { format } from 'date-fns'
-import { ArrowLeft, CalendarDays, Check, Pencil, RotateCcw, Trash2 } from 'lucide-react'
+import { Archive, ArchiveRestore, ArrowLeft, CalendarDays, Check, Pencil, RotateCcw, Trash2 } from 'lucide-react'
 import { useRef, useState } from 'react'
 import type { Quest } from '../../../db/types'
 import { ui } from '../../../ui/styles'
@@ -14,10 +14,12 @@ interface Props {
   onRename: (title: string) => Promise<void>
   onComplete: (anchor: HTMLElement) => void
   onReopen: () => void
+  onArchive: () => void
+  onUnarchive: () => void
   onDelete: () => void
 }
 
-export function BoardHeader({ quest, progress, todayKey, onRename, onComplete, onReopen, onDelete }: Props) {
+export function BoardHeader({ quest, progress, todayKey, onRename, onComplete, onReopen, onArchive, onUnarchive, onDelete }: Props) {
   const meta = CATEGORY[quest.category]
   const cls = CAT_CLASS[quest.category]
   const [renaming, setRenaming] = useState(false)
@@ -25,6 +27,7 @@ export function BoardHeader({ quest, progress, todayKey, onRename, onComplete, o
   const completeBtn = useRef<HTMLButtonElement>(null)
   const back = backTarget()
   const complete = !!quest.projectDoneAt
+  const archived = complete && !!quest.archivedAt
   const pastDeadline = !!quest.dueDate && quest.dueDate < todayKey && !complete
 
   return (
@@ -67,6 +70,12 @@ export function BoardHeader({ quest, progress, todayKey, onRename, onComplete, o
                 Completed {format(new Date(quest.projectDoneAt!), 'MMM d')}
               </span>
             )}
+            {archived && (
+              <span className="inline-flex items-center gap-1.5 rounded-chip bg-sunken py-1 pr-2.5 pl-2 text-[12px] font-medium text-muted">
+                <Archive aria-hidden className="size-3.5" strokeWidth={1.75} />
+                Archived
+              </span>
+            )}
           </div>
 
           {renaming ? (
@@ -95,7 +104,12 @@ export function BoardHeader({ quest, progress, todayKey, onRename, onComplete, o
         </div>
 
         <div className="flex shrink-0 items-center gap-2 lg:mt-[35px]">
-          {complete ? (
+          {archived ? (
+            <button type="button" onClick={onUnarchive} className={`${ui.btn} ${ui.secondary} h-10 px-3.5 text-[14px]`}>
+              <ArchiveRestore aria-hidden className="size-4" strokeWidth={1.75} />
+              Unarchive
+            </button>
+          ) : complete ? (
             <button type="button" onClick={onReopen} className={`${ui.btn} ${ui.secondary} h-10 px-3.5 text-[14px]`}>
               <RotateCcw aria-hidden className="size-4" strokeWidth={1.75} />
               Reopen
@@ -117,6 +131,11 @@ export function BoardHeader({ quest, progress, todayKey, onRename, onComplete, o
             label="Project actions"
             items={[
               { label: 'Rename project', Icon: Pencil, onSelect: () => setRenaming(true) },
+              ...(archived
+                ? [{ label: 'Reopen project', Icon: RotateCcw, onSelect: onReopen, hint: 'Also takes it out of the archive' }]
+                : complete
+                  ? [{ label: 'Archive project', Icon: Archive, onSelect: onArchive, hint: 'Hides it from Projects and Home' }]
+                  : []),
               { label: 'Delete project', Icon: Trash2, danger: true, separator: true, onSelect: onDelete, hint: 'Past stones stay in your jar' },
             ]}
             className="size-10 border border-line bg-surface shadow-card"
