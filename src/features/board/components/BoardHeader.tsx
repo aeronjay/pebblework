@@ -1,7 +1,6 @@
 import { format } from 'date-fns'
 import { ArrowLeft, CalendarDays, Check, Pencil, RotateCcw, Trash2 } from 'lucide-react'
 import { useRef, useState } from 'react'
-import { href } from '../../../app/router'
 import type { Quest } from '../../../db/types'
 import { ui } from '../../../ui/styles'
 import { CATEGORY } from '../../quests/meta'
@@ -31,7 +30,7 @@ export function BoardHeader({ quest, progress, todayKey, onRename, onComplete, o
   return (
     <header className="mb-6 md:mb-8">
       <a
-        href={href.home}
+        href={back.to}
         onClick={(e) => {
           if (!back.inApp) return
           e.preventDefault()

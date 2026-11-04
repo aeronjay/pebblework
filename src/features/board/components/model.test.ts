@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { arrayMove, containerOf, describeDue, moveItem, moveMessage, projectMessage } from './model'
+import { arrayMove, backTarget, containerOf, describeDue, moveItem, moveMessage, projectMessage } from './model'
 
 describe('board model', () => {
   const items = { a: ['1', '2', '3'], b: ['4'] }
@@ -37,5 +37,15 @@ describe('board model', () => {
     expect(moveMessage({ awarded: true, withdrawn: false, todayClaimed: false }, true, 0)).toMatch(/claim it on the calendar/)
     expect(moveMessage({ awarded: true, withdrawn: false, todayClaimed: false }, true, 2)).toMatch(/claim it on the calendar/)
     expect(projectMessage(true, 1)).toMatch(/claim them on the calendar/)
+  })
+})
+
+describe('backTarget', () => {
+  it('names the in-app page it returns to, and falls back to Projects', () => {
+    expect(backTarget('#/notes')).toEqual({ label: 'Notes', to: '#/notes', inApp: true })
+    expect(backTarget('#/')).toEqual({ label: 'Home', to: '#/', inApp: true })
+    expect(backTarget('#/projects')).toEqual({ label: 'Projects', to: '#/projects', inApp: true })
+    expect(backTarget(null)).toEqual({ label: 'Projects', to: '#/projects', inApp: false })
+    expect(backTarget('#/quests/abc')).toEqual({ label: 'Projects', to: '#/projects', inApp: false })
   })
 })

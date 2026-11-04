@@ -3,6 +3,7 @@ import { differenceInCalendarDays, format } from 'date-fns'
 import type { Card, Subtask } from '../../../db/types'
 import { parseDayKey } from '../../quests/day'
 import type { CardMoveResult } from '../repo'
+import { href, parseHash, type Route } from '../../../app/router'
 
 export type Items = Record<string, string[]> // column id → card ids in order
 
@@ -99,14 +100,24 @@ if (typeof window !== 'undefined') {
   })
 }
 
-export function backTarget(): { label: string; inApp: boolean } {
-  const from = cameFrom ?? ''
-  if (!cameFrom || from.startsWith('#/quests/')) return { label: 'Home', inApp: false }
-  if (from.startsWith('#/projects')) return { label: 'Projects', inApp: true }
-  if (from.startsWith('#/today')) return { label: 'Today', inApp: true }
-  if (from.startsWith('#/goals')) return { label: 'Goals', inApp: true }
-  if (from.startsWith('#/settings')) return { label: 'Settings', inApp: true }
-  return { label: 'Home', inApp: true }
+const BACK_LABEL: Record<Route['name'], string> = {
+  home: 'Home',
+  projects: 'Projects',
+  notes: 'Notes',
+  review: 'Review',
+  shelf: 'Shelf',
+  insights: 'Insights',
+  identity: 'Identity',
+  settings: 'Settings',
+  board: 'Projects',
+}
+
+// In the app: history.back() to the page the user came from, named after it. Otherwise (a fresh load, a refresh, or
+// another board) the board's own section, Projects.
+export function backTarget(from: string | null = cameFrom): { label: string; to: string; inApp: boolean } {
+  const route = from === null ? undefined : parseHash(from)
+  if (!route || route.name === 'board') return { label: 'Projects', to: href.projects, inApp: false }
+  return { label: BACK_LABEL[route.name], to: from!, inApp: true }
 }
 
 // Literal class names per category (Tailwind can't see `text-${category}-ink`).
