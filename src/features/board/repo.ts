@@ -2,7 +2,7 @@
 // Integer `order`, renumbered 0..n-1 (ties: createdAt, then id) on every reorder, so ordering is stable.
 // Completions are only ever created/withdrawn by card moves (incl. add/delete/deleteColumn), subtask checks (incl.
 // subtask/card deletes) and complete/reopenProject, never by column or subtask reorders.
-import { db, getDeviceId, newId, newMeta, type MarbleDB } from '../../db/db'
+import { db, getDeviceId, getSettings, newId, newMeta, type MarbleDB } from '../../db/db'
 import type { BoardColumn, Card, Quest, QuestCompletion, Subtask } from '../../db/types'
 import { cardCompletionId, dayKey, isProject, projectCompletionId, subtaskCompletionId } from '../quests/day'
 import { QuestError } from '../quests/errors'
@@ -501,7 +501,8 @@ export interface InProgressItem {
 
 // Cards being worked on across every open project: live cards on a live, not-completed project, in a live column
 // that is neither the board's first column (the backlog) nor its done column. A 2-column board has none.
-// Sorted: cards with a due date first (soonest first), then most recently updated.
+// Sorted in the user's order when they've arranged it (cards not in it follow), otherwise automatically: cards with
+// a due date first (soonest first), then most recently updated.
 export async function loadInProgress(database: MarbleDB = db): Promise<InProgressItem[]> {
   const quests = await database.quests.filter((q) => !q.deletedAt && !q.projectDoneAt && isProject(q)).toArray()
   const perQuest = await Promise.all(
@@ -518,11 +519,29 @@ export async function loadInProgress(database: MarbleDB = db): Promise<InProgres
       }))
     }),
   )
-  return perQuest.flat().sort((a, b) => {
+  const settings = await database.settings.get('settings')
+  return orderInProgress(perQuest.flat(), settings?.inProgressOrder)
+}
+
+// The automatic order, then the saved manual order on top of it: listed cards first in that order, the rest after
+// (in automatic order). Ids of cards no longer in progress are ignored.
+export function orderInProgress(items: InProgressItem[], manual?: string[]): InProgressItem[] {
+  const auto = [...items].sort((a, b) => {
     const da = a.card.dueDate
     const dbb = b.card.dueDate
     if (da && dbb && da !== dbb) return da.localeCompare(dbb)
     if (!!da !== !!dbb) return da ? -1 : 1
     return b.card.updatedAt.localeCompare(a.card.updatedAt) || a.card.id.localeCompare(b.card.id)
   })
+  if (!manual?.length) return auto
+  const rank = new Map(manual.map((id, i) => [id, i]))
+  const placed = auto.filter((x) => rank.has(x.card.id)).sort((a, b) => rank.get(a.card.id)! - rank.get(b.card.id)!)
+  return [...placed, ...auto.filter((x) => !rank.has(x.card.id))]
 }
+
+// Saves the strip's order (the ids shown, in their new order). Stored on settings rather than on each card, so
+// arranging the strip never bumps a card's updatedAt (which the automatic order uses).
+export async function reorderInProgress(ids: string[], database: MarbleDB = db): Promise<void> {
+  await database.settings.put({ ...(await getSettings(database)), inProgressOrder: [...ids] })
+}
+

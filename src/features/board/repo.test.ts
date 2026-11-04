@@ -15,6 +15,7 @@ import {
   deleteSubtask,
   loadBoard,
   loadInProgress,
+  reorderInProgress,
   loadProjects,
   moveCard,
   moveColumn,
@@ -577,5 +578,36 @@ describe('in progress', () => {
     expect(await ids(d)).toEqual(['Kept'])
     await reopenProject(m.id, at(D0, 13), d)
     expect((await ids(d)).sort()).toEqual(['Kept', 'On a finished project'])
+  })
+})
+
+describe('in progress order', () => {
+  const ids = async (d: MarbleDB) => (await loadInProgress(d)).map((x) => x.card.title)
+
+  it('keeps a hand-arranged order, puts new cards after it, and ignores stale ids', async () => {
+    const d = freshDb()
+    const p = await project(d)
+    const a = await addCard(p.id, p.doing, 'A', at(D0, 9), d)
+    const b = await addCard(p.id, p.doing, 'B', at(D0, 10), d)
+    const c = await addCard(p.id, p.doing, 'C', at(D0, 11), d)
+    expect(await ids(d)).toEqual(['C', 'B', 'A']) // most recently updated first
+
+    await reorderInProgress([a, c, b], d)
+    expect(await ids(d)).toEqual(['A', 'C', 'B'])
+
+    await addCard(p.id, p.doing, 'New', at(D0, 12), d)
+    expect(await ids(d)).toEqual(['A', 'C', 'B', 'New'])
+
+    await moveCard(c, p.done, 0, NOW, d) // leaves the strip; its id stays in the saved order harmlessly
+    expect(await ids(d)).toEqual(['A', 'B', 'New'])
+  })
+
+  it('never touches the cards themselves', async () => {
+    const d = freshDb()
+    const p = await project(d)
+    const a = await addCard(p.id, p.doing, 'A', at(D0, 9), d)
+    const before = await d.cards.get(a)
+    await reorderInProgress([a], d)
+    expect(await d.cards.get(a)).toEqual(before)
   })
 })

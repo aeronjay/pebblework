@@ -138,6 +138,7 @@ export interface Settings {
   theme: 'system' | 'light' | 'dark'
   lastExportAt?: string
   backupSnoozedUntil?: string // ISO; the Home backup reminder stays quiet until then
+  inProgressOrder?: string[] // card ids in the user's order for Home's In progress strip; unset = automatic
 }
 
 export type QuestCategory = 'dq' | 'mq' | 'sq'

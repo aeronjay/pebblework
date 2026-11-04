@@ -17,3 +17,4 @@ export function useProjects(): ProjectSummary[] | undefined {
 export function useInProgress(): InProgressItem[] | undefined {
   return useLiveQuery(() => loadInProgress())
 }
+
