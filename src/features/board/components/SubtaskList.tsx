@@ -171,7 +171,7 @@ function SubtaskRow({ subtask, category, first, last, onToggle, onRename, onMove
     <li
       ref={setNodeRef}
       style={{ transform: CSS.Translate.toString(transform), transition: reduce ? undefined : transition }}
-      className={`group/sub relative flex items-center gap-1 rounded-[10px] py-0.5 pr-0.5 pl-0 ${
+      className={`group/sub relative flex items-start gap-1 rounded-[10px] py-0.5 pr-0.5 pl-0 ${
         isDragging ? 'z-10 bg-elevated shadow-pop ring-1 ring-line-strong' : 'hover:bg-sunken/60'
       }`}
     >
@@ -192,7 +192,7 @@ function SubtaskRow({ subtask, category, first, last, onToggle, onRename, onMove
         aria-checked={subtask.done}
         aria-label={subtask.title}
         onClick={onToggle}
-        className="relative grid size-[18px] shrink-0 place-items-center rounded-[6px] outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-elevated"
+        className="relative mt-[5px] grid size-[18px] shrink-0 place-items-center rounded-[6px] outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-elevated"
       >
         <span
           aria-hidden
@@ -213,21 +213,26 @@ function SubtaskRow({ subtask, category, first, last, onToggle, onRename, onMove
         </svg>
       </button>
       {editing ? (
-        <input
+        <textarea
           autoFocus
+          rows={1}
           value={draft}
           maxLength={200}
           aria-label="Subtask title"
-          onChange={(e) => setDraft(e.target.value)}
+          onFocus={(e) => e.currentTarget.setSelectionRange(draft.length, draft.length)}
+          onChange={(e) => setDraft(e.target.value.replace(/\n/g, ' '))}
           onBlur={() => finish(true)}
           onKeyDown={(e) => {
-            if (e.key === 'Enter') finish(true)
+            if (e.key === 'Enter') {
+              e.preventDefault()
+              finish(true)
+            }
             if (e.key === 'Escape') {
               e.stopPropagation()
               finish(false)
             }
           }}
-          className="ml-1.5 h-7 min-w-0 flex-1 rounded-md border border-ring/60 bg-surface px-1.5 text-[14px] text-ink ring-2 ring-ring/20 outline-none"
+          className="ml-1.5 min-h-7 min-w-0 flex-1 resize-none rounded-md border border-ring/60 bg-surface px-1.5 py-[3px] text-[14px] leading-5 text-ink ring-2 ring-ring/20 outline-none [field-sizing:content]"
         />
       ) : (
         <button
@@ -237,7 +242,7 @@ function SubtaskRow({ subtask, category, first, last, onToggle, onRename, onMove
             setDraft(subtask.title)
             setEditing(true)
           }}
-          className={`ml-1.5 min-w-0 flex-1 truncate rounded-md px-1.5 py-1 text-left text-[14px] outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+          className={`ml-1.5 min-w-0 flex-1 rounded-md px-1.5 py-1 text-left text-[14px] leading-5 break-words [overflow-wrap:anywhere] outline-none focus-visible:ring-2 focus-visible:ring-ring ${
             subtask.done ? 'text-faint line-through decoration-line-strong' : 'text-ink'
           }`}
         >
