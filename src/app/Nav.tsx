@@ -1,6 +1,7 @@
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
 import { useEffect, useId, useRef, useState, type ComponentType, type FocusEvent, type PointerEvent, type ReactNode } from 'react'
 import {
+  FocusIcon,
   HomeIcon,
   IdentityIcon,
   InsightsIcon,
@@ -12,6 +13,7 @@ import {
   ShelfIcon,
   type NavIconProps,
 } from './icons/NavIcons'
+import { useActiveSession } from '../features/focus/hooks'
 import { href, type Route } from './router'
 
 interface Tab {
@@ -23,6 +25,7 @@ interface Tab {
 
 const TABS: Tab[] = [
   { label: 'Home', to: href.home, match: ['home'], Icon: HomeIcon },
+  { label: 'Focus', to: href.focus, match: ['focus'], Icon: FocusIcon },
   { label: 'Projects', to: href.projects, match: ['projects', 'board'], Icon: ProjectsIcon },
   { label: 'Notes', to: href.notes, match: ['notes'], Icon: NotesIcon },
   { label: 'Review', to: href.review, match: ['review'], Icon: ReviewIcon },
@@ -34,7 +37,7 @@ const TABS: Tab[] = [
 ]
 
 // Phones fit four tabs plus "More"; the rest live in the More sheet.
-const PHONE_TABS = ['Home', 'Projects', 'Notes', 'Shelf']
+const PHONE_TABS = ['Home', 'Focus', 'Projects', 'Notes']
 const PHONE_PRIMARY = TABS.filter((t) => PHONE_TABS.includes(t.label))
 const PHONE_MORE = TABS.filter((t) => !PHONE_TABS.includes(t.label))
 
@@ -42,6 +45,7 @@ const focus = 'outline-none focus-visible:ring-2 focus-visible:ring-ring'
 
 // Bottom tab bar on phones.
 export function BottomNav({ route }: { route: Route }) {
+  const focusing = !!useActiveSession()
   return (
     <nav
       aria-label="Primary"
@@ -55,8 +59,10 @@ export function BottomNav({ route }: { route: Route }) {
               <a href={t.to} aria-current={active ? 'page' : undefined} className={bottomItem(active)}>
                 <BottomGlyph active={active}>
                   <t.Icon active={active} className={bottomIcon} />
+                  {focusing && t.match.includes('focus') && <RunningDot />}
                 </BottomGlyph>
                 <span className="max-w-full truncate">{t.label}</span>
+                {focusing && t.match.includes('focus') && <span className="sr-only">, session running</span>}
               </a>
             </li>
           )
@@ -195,6 +201,7 @@ export function SideNav({ route }: { route: Route }) {
   const [tip, setTip] = useState<{ label: string; top: number } | null>(null)
   const timer = useRef<number | undefined>(undefined)
   const expanded = hovered || keyboard
+  const focusing = !!useActiveSession()
 
   useEffect(() => () => window.clearTimeout(timer.current), [])
 
@@ -225,6 +232,7 @@ export function SideNav({ route }: { route: Route }) {
       tab={t}
       active={t.match.includes(route.name)}
       expanded={expanded}
+      running={focusing && t.match.includes('focus')}
       onHover={(el) => showTip(t.label, el)}
       onUnhover={() => setTip((cur) => (cur?.label === t.label ? null : cur))}
     />
@@ -263,11 +271,12 @@ interface RailItemProps {
   tab: Tab
   active: boolean
   expanded: boolean
+  running: boolean // a focus session is open
   onHover: (el: HTMLElement) => void
   onUnhover: () => void
 }
 
-function RailItem({ tab, active, expanded, onHover, onUnhover }: RailItemProps) {
+function RailItem({ tab, active, expanded, running, onHover, onUnhover }: RailItemProps) {
   return (
     <li className="relative">
       {active && (
@@ -289,15 +298,22 @@ function RailItem({ tab, active, expanded, onHover, onUnhover }: RailItemProps) 
         onPointerLeave={onUnhover}
         className={`group/item relative flex h-10 items-center gap-3 rounded-control transition-colors ${focus} ${active ? 'text-ink' : 'text-muted hover:bg-ink/[0.035] hover:text-ink dark:hover:bg-white/[0.04]'}`}
       >
-        <span className="grid size-10 shrink-0 place-items-center">
+        <span className="relative grid size-10 shrink-0 place-items-center">
           <tab.Icon active={active} className="size-[21px] transition-transform duration-150 group-active/item:scale-90 motion-reduce:transition-none" />
+          {running && <RunningDot />}
         </span>
         <Label expanded={expanded} className={`text-sm ${active ? 'font-semibold' : 'font-medium'}`}>
           {tab.label}
+          {running && <span className="font-normal text-muted"> · running</span>}
         </Label>
       </a>
     </li>
   )
+}
+
+// A focus session is open: a small blaze pebble on the Focus icon, so it's findable from anywhere.
+function RunningDot() {
+  return <span aria-hidden className="absolute top-1 right-2.5 size-2 rounded-chip bg-blaze ring-2 ring-canvas motion-safe:animate-pulse" />
 }
 
 // Outside the rail (which clips its overflow); fixed beside the hovered icon. Decorative: links keep their names.

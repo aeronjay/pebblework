@@ -242,3 +242,23 @@ export interface Identity extends Meta {
   why?: string
   order: number
 }
+
+export type FocusRating = 1 | 2 | 3 | 4 | 5
+
+// One focus session on one task. Running while `endedAt` is unset; the timer is `focusMs` (banked time) plus the
+// stretch since `resumedAt` (unset = paused), so a session survives reloads and pauses never count.
+export interface FocusSession extends Meta {
+  id: string
+  dayKey: string // the day it started
+  task: string // the task's title when the session started
+  questId?: string // the quest it was for, or the card's project
+  cardId?: string // the board card it was for
+  plannedMin: number // 0 = open-ended
+  startedAt: string
+  resumedAt?: string
+  focusMs: number
+  endedAt?: string
+  rating?: FocusRating // "How focused did that feel?", the user's own call
+  parked: string[] // stray thoughts written down mid-session
+  awayCount: number // times the tab was hidden while the timer ran
+}

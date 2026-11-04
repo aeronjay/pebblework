@@ -6,6 +6,8 @@ import { addDaysToKey, dayKey, parseDayKey } from '../features/quests/day'
 import { completeQuest, createQuest, deleteQuest } from '../features/quests/repo'
 import { addCard, addColumn, addSubtask, loadBoard, moveCard, toggleSubtask, updateCard } from '../features/board/repo'
 import type { QuestInput } from '../features/quests/repo'
+import { endSession, parkThought, rateSession, startSession } from '../features/focus/repo'
+import type { FocusRating } from '../db/types'
 
 export type SeedMode = 'demo' | 'full'
 
@@ -82,6 +84,7 @@ export async function seed(database: MarbleDB = db, mode: SeedMode = 'demo', now
   const grandma = await create({ category: 'sq', title: 'Call grandma' }, -12)
   await seedStarfall(database, key, at, now)
   await seedPortfolio(database, key, at)
+  await seedFocus(database, at)
 
   // Closed = passed with nothing done (any finished quest makes a day claimable). Day -8 is partial: one DQ skipped.
   const skipped = new Set([-9, -7])
@@ -113,6 +116,28 @@ export async function seed(database: MarbleDB = db, mode: SeedMode = 'demo', now
 }
 
 type At = (offset: number, hour: number) => Date
+
+// A week of focus sessions (none today): varied lengths and ratings, a few parked thoughts.
+async function seedFocus(database: MarbleDB, at: At) {
+  const sessions: [offset: number, hour: number, task: string, planned: number, minutes: number, rating?: FocusRating, parked?: string[]][] = [
+    [-6, 9, 'Finish chapter 3 draft', 45, 52, 5],
+    [-6, 15, 'Plan the Q1 roadmap', 25, 25, 3, ['book flights']],
+    [-5, 10, 'Outline the conference talk', 25, 31, 4],
+    [-4, 14, 'Design the homepage', 45, 38, 2, ['reply to Mia', 'renew domain']],
+    [-3, 9, 'Add login/logout', 25, 40, 4],
+    [-2, 11, 'Finish chapter 3 draft', 15, 22, 4, ['look up citation style']],
+    [-1, 9, 'Enemy AI', 45, 47, 5],
+    [-1, 16, 'Write three case studies', 25, 18, 3],
+  ]
+  for (const [offset, hour, task, planned, minutes, rating, parked] of sessions) {
+    const start = at(offset, hour)
+    const id = await startSession({ task, plannedMin: planned }, start, database)
+    for (const p of parked ?? []) await parkThought(id, p, start, database)
+    const end = new Date(start.getTime() + minutes * 60_000)
+    await endSession(id, end, database)
+    if (rating) await rateSession(id, rating, end, database)
+  }
+}
 
 // SQ project: To do / In progress / Playtest / Done, 9 cards; 2 finished on earlier (claimable/claimed) days, 1 today.
 async function seedStarfall(database: MarbleDB, key: (o: number) => string, at: At, now: Date) {

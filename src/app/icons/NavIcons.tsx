@@ -56,6 +56,17 @@ export function SettingsIcon(props: NavIconProps) {
   )
 }
 
+// Focus: a stone dropped into still water, two rings settling around it.
+export function FocusIcon(props: NavIconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M10 11.6c0-.9.9-1.5 2-1.5s2 .6 2 1.5-.9 1.4-2 1.4-2-.5-2-1.4z" />
+      <path d="M6.2 11.8c0-2 2.6-3.4 5.8-3.4s5.8 1.4 5.8 3.4-2.6 3.3-5.8 3.3-5.8-1.3-5.8-3.3z" />
+      <path d="M5.6 7.1C3.9 8.1 3 9.5 3 11.6c0 3.6 4 6 9 6s9-2.4 9-6c0-2.1-.9-3.5-2.6-4.5" />
+    </Svg>
+  )
+}
+
 // A note: a page with a folded corner and two lines of writing.
 export function NotesIcon(props: NavIconProps) {
   return (

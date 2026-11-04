@@ -67,4 +67,12 @@ describe('dev seed', () => {
     const r = await claimAll(d, NOW)
     expect(r.filledJarIds).toEqual([s.jarId])
   })
+
+  it('seeds a week of finished focus sessions and none open', async () => {
+    const d = freshDb()
+    await seed(d, 'demo', NOW)
+    const sessions = await d.focusSessions.toArray()
+    expect(sessions).toHaveLength(8)
+    expect(sessions.every((x) => x.endedAt && !x.deletedAt && x.dayKey < dayKey(NOW))).toBe(true)
+  })
 })

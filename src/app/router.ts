@@ -3,6 +3,7 @@ import { useSyncExternalStore } from 'react'
 export type Route =
   | { name: 'home' }
   | { name: 'settings' }
+  | { name: 'focus' }
   | { name: 'projects' }
   | { name: 'notes' }
   | { name: 'review' }
@@ -14,6 +15,7 @@ export type Route =
 export function parseHash(hash: string): Route {
   const parts = hash.replace(/^#\/?/, '').split('/').filter(Boolean)
   if (parts[0] === 'quests' && parts[1]) return { name: 'board', id: parts[1] }
+  if (parts[0] === 'focus') return { name: 'focus' }
   if (parts[0] === 'projects') return { name: 'projects' }
   if (parts[0] === 'notes') return { name: 'notes' }
   if (parts[0] === 'review') return { name: 'review' }
@@ -27,6 +29,7 @@ export function parseHash(hash: string): Route {
 export const href = {
   home: '#/',
   settings: '#/settings',
+  focus: '#/focus',
   projects: '#/projects',
   notes: '#/notes',
   review: '#/review',

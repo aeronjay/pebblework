@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { freshDb } from '../test/db'
 import { DEFAULT_SETTINGS, newId, newMeta } from './db'
-import { BackupError, backupDue, exportBackup, importBackup, parseBackup, snoozeBackupReminder } from './backup'
+import { BACKUP_SCHEMA_VERSION, BackupError, backupDue, exportBackup, importBackup, parseBackup, snoozeBackupReminder } from './backup'
 import { claimAll } from '../features/quests/claim'
 
 describe('backup', () => {
@@ -34,7 +34,7 @@ describe('backup', () => {
     await source.stones.add({ id: 's1', jarId: 'j1', dayKey: '2026-11-01', category: 'dq', weight: 1, rarity: 'normal', at: meta.createdAt, ...meta })
 
     const backup = parseBackup(JSON.stringify(await exportBackup(source)))
-    expect(backup.schemaVersion).toBe(6)
+    expect(backup.schemaVersion).toBe(BACKUP_SCHEMA_VERSION)
     const target = freshDb()
     await importBackup(backup, target)
     expect(await target.quests.count()).toBe(1)
@@ -65,6 +65,18 @@ describe('backup', () => {
     expect(await target.boardColumns.count()).toBe(1)
     expect((await target.cards.get('k1'))?.subtasks).toHaveLength(1)
     expect(await target.questCompletions.where('cardId').equals('k1').count()).toBe(1)
+  })
+
+  it('round-trips focus sessions', async () => {
+    const source = freshDb()
+    const meta = newMeta()
+    await source.focusSessions.add({
+      id: 'f1', dayKey: '2026-11-04', task: 'Write', plannedMin: 25, startedAt: meta.createdAt, endedAt: meta.createdAt,
+      focusMs: 1_500_000, rating: 4, parked: ['email'], awayCount: 1, ...meta,
+    })
+    const target = freshDb()
+    await importBackup(parseBackup(JSON.stringify(await exportBackup(source))), target)
+    expect(await target.focusSessions.get('f1')).toMatchObject({ task: 'Write', rating: 4, parked: ['email'] })
   })
 
   it('imports v2 backups that predate boards and clears local boards', async () => {

@@ -102,6 +102,7 @@ if (typeof window !== 'undefined') {
 
 const BACK_LABEL: Record<Route['name'], string> = {
   home: 'Home',
+  focus: 'Focus',
   projects: 'Projects',
   notes: 'Notes',
   review: 'Review',

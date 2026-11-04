@@ -3,6 +3,7 @@ import { BottomNav, SideNav } from './app/Nav'
 import { useRoute, type Route } from './app/router'
 import { useThemeSync } from './app/theme'
 import { BoardScreen } from './screens/BoardScreen'
+import { FocusScreen } from './screens/FocusScreen'
 import { HomeScreen } from './screens/HomeScreen'
 import { IdentityScreen } from './screens/IdentityScreen'
 import { InsightsScreen } from './screens/InsightsScreen'
@@ -18,6 +19,8 @@ function Screen({ route }: { route: Route }) {
       return <HomeScreen />
     case 'settings':
       return <SettingsScreen />
+    case 'focus':
+      return <FocusScreen />
     case 'projects':
       return <ProjectsScreen />
     case 'board':
@@ -49,7 +52,7 @@ const LAYOUT: Record<Layout, string> = {
 function layoutOf(route: Route): Layout {
   if (route.name === 'home') return 'shell'
   if (route.name === 'board') return 'full'
-  if (route.name === 'projects' || route.name === 'notes' || route.name === 'shelf' || route.name === 'insights') return 'roomy'
+  if (route.name === 'focus' || route.name === 'projects' || route.name === 'notes' || route.name === 'shelf' || route.name === 'insights') return 'roomy'
   return 'narrow'
 }
 

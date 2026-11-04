@@ -10,6 +10,7 @@ describe('parseHash', () => {
     ['#/goals', { name: 'home' }],
     ['#/goals/abc/edit', { name: 'home' }],
     ['#/settings', { name: 'settings' }],
+    ['#/focus', { name: 'focus' }],
     ['#/projects', { name: 'projects' }],
     ['#/notes', { name: 'notes' }],
     ['#/review', { name: 'review' }],
