@@ -78,6 +78,7 @@ The rest of the app follows a few rules:
 | **Weekly review** | Three short prompts: what went well, what got in the way, and one tweak for next week. |
 | **Identity** | Write "who I'm becoming" statements and link quests to them. |
 | **Notes** | Plans, thoughts and what got in the way, all in one place. |
+| **Loose ends** | Quick, one-off reminders on Home that stay outside the quest and reward loop. |
 | **Themes** | Light, dark, or follow the system. The jar canvas follows the theme too. |
 | **Installable** | A PWA, so you can add it to your home screen or dock and use it offline. |
 

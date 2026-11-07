@@ -12,11 +12,11 @@ import {
 import { horizontalListSortingStrategy, SortableContext, sortableKeyboardCoordinates, useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { CalendarClock, GripVertical } from 'lucide-react'
-import { useId, useState } from 'react'
+import { useState } from 'react'
 import { createPortal } from 'react-dom'
 import { href } from '../../app/router'
 import { arrayMove } from '../board/components/model'
-import { useInProgress, type InProgressItem } from '../board/hooks'
+import type { InProgressItem } from '../board/hooks'
 import { reorderInProgress } from '../board/repo'
 import { useToast } from '../quests/components/toastContext'
 import { deadlineOf, type DeadlineTone } from '../projects/model'
@@ -33,9 +33,7 @@ const focus = 'outline-none focus-visible:ring-2 focus-visible:ring-ring'
 // Cards sitting in a middle column of an open project board: work already started, kept in view on Home.
 // One horizontally scrolling row at every size, so it never pushes the quest list around. Each card has a grip to
 // drag it into the user's own order, which stays as arranged (new cards join at the end).
-export function InProgressStrip({ todayKey }: { todayKey: string }) {
-  const items = useInProgress()
-  const titleId = useId()
+export function InProgressStrip({ items, todayKey }: { items: InProgressItem[] | undefined; todayKey: string }) {
   const toast = useToast()
   // Optimistic order until the live query catches up (same `items` array = not yet).
   const [order, setOrder] = useState<{ ids: string[]; base: InProgressItem[] } | null>(null)
@@ -71,16 +69,9 @@ export function InProgressStrip({ todayKey }: { todayKey: string }) {
   }
 
   return (
-    <section aria-labelledby={titleId} className="min-w-0">
-      <h2 id={titleId} className="flex items-center gap-2 text-[15px] font-semibold text-ink">
-        {/* The trail blaze: where today's attention goes first. */}
-        <span aria-hidden className="size-2 rounded-full bg-blaze" />
-        In progress
-        {items.length > 0 && <span className="font-normal text-muted tabular-nums">{items.length}</span>}
-      </h2>
-
+    <>
       {items.length === 0 ? (
-        <p className="mt-1.5 text-[14px] leading-snug text-muted">
+        <p className="text-[14px] leading-snug text-muted">
           Nothing started yet. Move a card to In progress on a{' '}
           <a href={href.projects} className={`rounded-sm font-medium text-ink underline decoration-line-strong underline-offset-2 hover:decoration-ink ${focus}`}>
             project board
@@ -103,7 +94,7 @@ export function InProgressStrip({ todayKey }: { todayKey: string }) {
           <SortableContext items={ids} strategy={horizontalListSortingStrategy}>
             {/* Scroll snapping fights the drag's auto-scroll, so it's off while a card is held. */}
             <ul
-              className={`-mx-4 mt-3 flex scroll-px-4 gap-2.5 overflow-x-auto px-4 pb-1 md:-mx-1 md:scroll-px-1 md:px-1 [scrollbar-width:thin] ${dragId ? '' : 'snap-x snap-mandatory'}`}
+              className={`-mx-4 flex scroll-px-4 gap-2.5 overflow-x-auto px-4 pb-1 md:-mx-1 md:scroll-px-1 md:px-1 [scrollbar-width:thin] ${dragId ? '' : 'snap-x snap-mandatory'}`}
             >
               {shown.map((item) => (
                 <SortableItem key={item.card.id} item={item} todayKey={todayKey} />
@@ -122,7 +113,7 @@ export function InProgressStrip({ todayKey }: { todayKey: string }) {
           )}
         </DndContext>
       )}
-    </section>
+    </>
   )
 }
 
@@ -169,7 +160,7 @@ function Item({ item: { card, column, quest, subtasks }, todayKey }: { item: InP
       ]
         .filter(Boolean)
         .join(', ')}
-      className={`flex h-full min-h-[96px] flex-col rounded-card border border-line bg-surface p-3.5 transition-[border-color,transform] duration-150 hover:-translate-y-px hover:border-line-strong motion-reduce:transition-none motion-reduce:hover:translate-y-0 ${focus}`}
+      className={`flex h-full min-h-[72px] flex-col rounded-card border border-line bg-surface px-3.5 py-3 transition-[border-color,transform] duration-150 hover:-translate-y-px hover:border-line-strong motion-reduce:transition-none motion-reduce:hover:translate-y-0 ${focus}`}
     >
       {/* Right padding keeps the stage label clear of the reorder grip. */}
       <span className="flex min-w-0 items-center gap-1.5 pr-4 text-[12.5px] text-muted">
@@ -178,22 +169,24 @@ function Item({ item: { card, column, quest, subtasks }, todayKey }: { item: InP
         {stage && <span className="shrink-0 text-faint">in {stage}</span>}
       </span>
       <span className="mt-1.5 line-clamp-2 text-[15px] leading-snug font-medium text-ink">{card.title}</span>
-      <span className="mt-auto flex items-center gap-3 pt-2.5 text-[12.5px] text-muted">
-        {subtasks.total > 0 && (
-          <span className="flex min-w-0 flex-1 items-center gap-2 tabular-nums">
-            <span aria-hidden className="h-1 min-w-0 flex-1 overflow-hidden rounded-chip bg-ink/10">
-              <span className="block h-full rounded-chip" style={{ width: `${pct * 100}%`, background: meta.color }} />
+      {(subtasks.total > 0 || due) && (
+        <span className="mt-auto flex items-center gap-3 pt-2.5 text-[12.5px] text-muted">
+          {subtasks.total > 0 && (
+            <span className="flex min-w-0 flex-1 items-center gap-2 tabular-nums">
+              <span aria-hidden className="h-1 min-w-0 flex-1 overflow-hidden rounded-chip bg-ink/10">
+                <span className="block h-full rounded-chip" style={{ width: `${pct * 100}%`, background: meta.color }} />
+              </span>
+              {subtasks.done}/{subtasks.total}
             </span>
-            {subtasks.done}/{subtasks.total}
-          </span>
-        )}
-        {due && (
-          <span className={`inline-flex shrink-0 items-center gap-1 ${TONE[due.tone]}`}>
-            <CalendarClock aria-hidden className="size-3.5" strokeWidth={1.75} />
-            {due.label}
-          </span>
-        )}
-      </span>
+          )}
+          {due && (
+            <span className={`inline-flex shrink-0 items-center gap-1 ${TONE[due.tone]}`}>
+              <CalendarClock aria-hidden className="size-3.5" strokeWidth={1.75} />
+              {due.label}
+            </span>
+          )}
+        </span>
+      )}
     </a>
   )
 }

@@ -17,6 +17,7 @@ import type {
   Settings,
   Stone,
   StreakState,
+  Task,
   Unlock,
   WeeklyReview,
 } from './types'
@@ -40,6 +41,7 @@ export class MarbleDB extends Dexie {
   notes!: EntityTable<Note, 'id'>
   identities!: EntityTable<Identity, 'id'>
   focusSessions!: EntityTable<FocusSession, 'id'>
+  tasks!: EntityTable<Task, 'id'>
 
   // The IndexedDB name predates the Pebblework rename. Never change it: a new name opens an empty database.
   constructor(name = 'marble-jar') {
@@ -81,6 +83,7 @@ export class MarbleDB extends Dexie {
     this.version(5).stores({ notes: 'id, updatedAt, questId' })
     this.version(6).stores({ identities: 'id, order, updatedAt' })
     this.version(7).stores({ focusSessions: 'id, dayKey, startedAt, updatedAt' })
+    this.version(8).stores({ tasks: 'id, completedAt, updatedAt' })
   }
 }
 

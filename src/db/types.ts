@@ -139,6 +139,7 @@ export interface Settings {
   lastExportAt?: string
   backupSnoozedUntil?: string // ISO; the Home backup reminder stays quiet until then
   inProgressOrder?: string[] // card ids in the user's order for Home's In progress strip; unset = automatic
+  looseEndOrder?: string[] // task ids in the user's order for Home's Loose ends; unset = by deadline
 }
 
 export type QuestCategory = 'dq' | 'mq' | 'sq'
@@ -262,4 +263,13 @@ export interface FocusSession extends Meta {
   rating?: FocusRating // "How focused did that feel?", the user's own call
   parked: string[] // stray thoughts written down mid-session
   awayCount: number // times the tab was hidden while the timer ran
+}
+
+export interface Task extends Meta {
+  id: string
+  title: string
+  note?: string
+  dueDate?: string // dayKey; reminder only
+  completedAt?: string
+  marbleAwardedAt?: string
 }

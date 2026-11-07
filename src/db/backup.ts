@@ -4,9 +4,9 @@ import type { DayClaim, QuestCompletion, Settings } from './types'
 
 // Internal format id from before the Pebblework rename. Kept so existing backups keep importing; never shown to users.
 export const BACKUP_APP = 'marble-jar'
-// v1 (no quest tables), v2 (no board tables), v3 (day-level claims), v4 (no notes), v5 (no identities) and v6 (no focus sessions) backups
+// v1 (no quest tables), v2 (no board tables), v3 (day-level claims), v4 (no notes), v5 (no identities), v6 (no focus sessions), and v7 (no tasks) backups
 // still import; a table missing from the backup imports as empty.
-export const BACKUP_SCHEMA_VERSION = 7
+export const BACKUP_SCHEMA_VERSION = 8
 
 const TABLES = [
   'goals',
@@ -27,6 +27,7 @@ const TABLES = [
   'notes',
   'identities',
   'focusSessions',
+  'tasks',
 ] as const
 
 type TableName = (typeof TABLES)[number]

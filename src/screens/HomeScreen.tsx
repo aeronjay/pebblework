@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { useToday } from '../app/useToday'
 import { BackupNudge } from '../features/backup/BackupNudge'
 import { QuestCalendar } from '../features/calendar/QuestCalendar'
-import { InProgressStrip } from '../features/focus/InProgressStrip'
+import { NowPanel } from '../features/focus/NowPanel'
 import { QuestJar } from '../features/jar/QuestJar'
 import { DayProgress } from '../features/quests/components/DayProgress'
 import { QuestLists } from '../features/quests/components/QuestLists'
@@ -77,7 +77,7 @@ function Home() {
 
           <div className="order-2 flex min-w-0 flex-col gap-4">
             <BackupNudge />
-            <InProgressStrip todayKey={todayKey} />
+            <NowPanel todayKey={todayKey} />
           </div>
 
           {/* The one scroll region of the shell (the quest tabs stick to its top). Side padding + negative margin keep focus rings from being clipped. */}
