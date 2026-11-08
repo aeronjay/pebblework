@@ -11,6 +11,12 @@ export function formatTime(hhmm: string): string {
   }
 }
 
+// formatDay for mid-sentence use: "due today", "due Friday", "was due Nov 1".
+export function formatDayInline(key: string, todayKey: string): string {
+  const d = formatDay(key, todayKey)
+  return /^(Today|Tomorrow|Yesterday)$/.test(d) ? d.toLowerCase() : d
+}
+
 export function formatDay(key: string, todayKey: string): string {
   const d = parseDayKey(key)
   const diff = differenceInCalendarDays(d, parseDayKey(todayKey))

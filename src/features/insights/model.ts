@@ -17,18 +17,42 @@ export function activeDays(completions: QuestCompletion[]): Set<string> {
 export type RestDay = (key: string) => boolean
 const noRest: RestDay = () => false
 
-// Consecutive active days ending today, or ending yesterday while today is still open (today never breaks a streak
-// until it's over). Rest days in between are skipped: they don't count, and they don't break the run.
+// "Never miss twice": one missed day doesn't end a run (it doesn't count either), two in a row do. A single slip
+// that wipes out a long run is what makes people quit ("what-the-hell" effect). Rest days are neutral: they neither
+// count, nor break a run, nor separate two misses.
+export const MISSES_ALLOWED = 1
+
+// Active days in the run ending today, or ending before today while today is still open (today never breaks a run
+// until it's over).
 export function currentStreak(days: ReadonlySet<string>, now: Date, rest: RestDay = noRest): number {
+  return streakState(days, now, rest).current
+}
+
+export interface StreakState {
+  current: number
+  atRisk: boolean // the run is alive but the last day that counted was a miss: one more miss ends it
+}
+
+export function streakState(days: ReadonlySet<string>, now: Date, rest: RestDay = noRest): StreakState {
   const first = [...days].sort()[0]
-  if (!first) return 0
-  let key = addDaysToKey(dayKey(now), -1)
-  let n = days.has(dayKey(now)) ? 1 : 0
-  for (; key >= first; key = addDaysToKey(key, -1)) {
-    if (days.has(key)) n++
-    else if (!rest(key)) break
+  if (!first) return { current: 0, atRisk: false }
+  const today = dayKey(now)
+  const doneToday = days.has(today)
+  let n = doneToday ? 1 : 0
+  let misses = 0 // consecutive misses walking back (rest days don't reset or add)
+  let gap = 0 // misses between the newest active day before today and today
+  let seenActive = false
+  for (let key = addDaysToKey(today, -1); key >= first; key = addDaysToKey(key, -1)) {
+    if (days.has(key)) {
+      n++
+      misses = 0
+      seenActive = true
+    } else if (!rest(key)) {
+      if (++misses > MISSES_ALLOWED) break // two misses in a row: the run is only what came after them
+      if (!seenActive) gap = misses
+    }
   }
-  return n
+  return { current: n, atRisk: !doneToday && n > 0 && gap > 0 }
 }
 
 export function bestStreak(days: ReadonlySet<string>, rest: RestDay = noRest): number {
@@ -44,9 +68,10 @@ export function bestStreak(days: ReadonlySet<string>, rest: RestDay = noRest): n
   return best
 }
 
-// Whether every day strictly between two active days is a rest day.
+// Whether two active days belong to one run: at most MISSES_ALLOWED non-rest days between them.
 function bridged(from: string, to: string, rest: RestDay): boolean {
-  for (let k = addDaysToKey(from, 1); k < to; k = addDaysToKey(k, 1)) if (!rest(k)) return false
+  let misses = 0
+  for (let k = addDaysToKey(from, 1); k < to; k = addDaysToKey(k, 1)) if (!rest(k) && ++misses > MISSES_ALLOWED) return false
   return true
 }
 
@@ -115,6 +140,7 @@ export interface Insights {
   total: number
   activeDays: number
   currentStreak: number
+  streakAtRisk: boolean
   bestStreak: number
   weekdays: WeekdayStat[]
   bestWeekday?: WeekdayStat
@@ -129,10 +155,12 @@ export function computeInsights(completions: QuestCompletion[], now: Date, rest:
   const days = activeDays(past)
   const weekdays = weekdayAverages(past, now)
   const categories = categoryCounts(past)
+  const streak = streakState(days, now, rest)
   return {
     total: past.length,
     activeDays: days.size,
-    currentStreak: currentStreak(days, now, rest),
+    currentStreak: streak.current,
+    streakAtRisk: streak.atRisk,
     bestStreak: bestStreak(days, rest),
     weekdays,
     bestWeekday: bestWeekday(weekdays),
@@ -143,9 +171,10 @@ export function computeInsights(completions: QuestCompletion[], now: Date, rest:
 }
 
 // One kind sentence about the streak. Never scolds a gap.
-export function streakLine(current: number, best: number, doneToday: boolean): string {
+export function streakLine(current: number, best: number, doneToday: boolean, atRisk = false): string {
   if (current === 0) return best > 0 ? `Your best run is ${best} ${best === 1 ? 'day' : 'days'}. One quest today starts a new one.` : 'One quest today starts your first run.'
   const days = `${current} ${current === 1 ? 'day' : 'days'}`
+  if (atRisk && !doneToday) return `You missed a day, and that's fine: your ${current}-day run is still here. One quest today keeps it going.`
   if (!doneToday) return `${days} in a row so far. Today can make it ${current + 1}.`
   if (current >= best && current > 1) return `${days} in a row, your longest run yet.`
   return `${days} in a row. Nice and steady.`

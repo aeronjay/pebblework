@@ -5,7 +5,7 @@ import type { QuestCategory } from '../../../db/types'
 import { ProjectsIcon } from '../../../app/icons/NavIcons'
 import { href, navigate } from '../../../app/router'
 import { EVERY_DAY, addDaysToKey, isEveryDay, isProject, normalizeDays, scheduleOn } from '../day'
-import type { QuestItem } from '../hooks'
+import { useQuests, type QuestItem } from '../hooks'
 import { CATEGORY, CATEGORY_ORDER } from '../meta'
 import { createQuest, deleteQuest, updateQuest } from '../repo'
 import { formatDay, scheduleLabel } from './describe'
@@ -29,6 +29,8 @@ export function QuestSheet({ target, todayKey, onClose }: Props) {
     </AnimatePresence>
   )
 }
+
+const DQ_SOFT_LIMIT = 5
 
 const FOCUSABLE = 'a[href],button:not([disabled]),input:not([disabled]),textarea:not([disabled]),select:not([disabled]),[tabindex]:not([tabindex="-1"])'
 
@@ -60,6 +62,9 @@ function Sheet({ target, todayKey, onClose }: { target: SheetTarget; todayKey: s
   const [confirmDelete, setConfirmDelete] = useState(false)
 
   const isDQ = category === 'dq'
+  // Too many daily quests turns most days into "6 of 10", which reads as failing. Nudge, never block.
+  const otherDQs = useQuests()?.filter((x) => x.category === 'dq' && x.id !== q?.id).length ?? 0
+  const crowded = isDQ && !q && otherDQs >= DQ_SOFT_LIMIT
   const asProject = project && !isDQ
   // Mirrors updateQuest's guards so the UI never offers an edit the repo would refuse.
   // A project's deadline is display-only, so it stays editable (only past dates are refused, via `min`).
@@ -249,6 +254,12 @@ function Sheet({ target, todayKey, onClose }: { target: SheetTarget; todayKey: s
                     : `${scheduleLabel(days)}. Other days are rest days and never hold up a day.`}
                   {q && days.join() !== scheduleOn(q, scheduleFrom).join() && ' Past days keep their old schedule.'}
                 </p>
+                {crowded && (
+                  <p role="note" className="mt-2 rounded-control bg-mq-soft px-3 py-2 text-[12.5px] leading-relaxed text-mq-ink">
+                    You already have {otherDQs} daily quests. A few small ones are easier to keep than many: finishing 3 of 3 feels better
+                    than 6 of 10. This one might work better as a main or side quest.
+                  </p>
+                )}
               </div>
             ) : (
               <div>

@@ -245,7 +245,7 @@ function titleClass(ticked: boolean) {
   return `ml-1.5 min-w-0 flex-1 py-1 text-[14px] leading-5 [overflow-wrap:anywhere] ${ticked ? 'text-faint line-through decoration-line-strong' : 'text-ink'}`
 }
 
-function TickBox({ ticked, label, onClick }: { ticked: boolean; label: string; onClick: () => void }) {
+export function TickBox({ ticked, label, onClick }: { ticked: boolean; label: string; onClick: () => void }) {
   const reduce = useReducedMotion()
   const color = CATEGORY.sq.color // Finishing one drops a side-quest stone.
 

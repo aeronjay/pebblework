@@ -1,11 +1,16 @@
 import { StickyNote } from 'lucide-react'
 import { motion } from 'motion/react'
 import type { CSSProperties, ReactNode } from 'react'
+import { db } from '../../../db/db'
+import { requestClaim } from '../claimBus'
 import { completeQuest, doItToday, uncompleteQuest } from '../repo'
 import type { QuestItem } from '../hooks'
 import { CATEGORY } from '../meta'
+import { useOpenToday } from './dayContext'
 import { describeQuest, dqRestLine, formatDay } from './describe'
 import { useCompleteFeedback } from './feedback'
+import { isDueToday } from './lists'
+import { PlanLine, type RowPlan } from './PlanLine'
 import { QuestCheck, type CheckState } from './QuestCheck'
 import { RowActions } from './RowActions'
 import { useToast } from './toastContext'
@@ -29,7 +34,10 @@ interface Props {
   canMoveUp?: boolean
   canMoveDown?: boolean
   showCategory?: boolean // in a mixed list (Today): name the quest's list before the caption
+  plan?: RowPlan // Today list only: this quest's slot in today's plan
 }
+
+export type { RowPlan }
 
 function checkState(item: QuestItem, todayKey: string, claimed: boolean): { state: CheckState; reason?: string } {
   const q = item.quest
@@ -43,10 +51,11 @@ function checkState(item: QuestItem, todayKey: string, claimed: boolean): { stat
   return { state: 'doneFixed', reason: item.doneToday && claimed ? 'Today is claimed, so this stays done' : 'Completed on an earlier day' }
 }
 
-export function QuestRow({ item, todayKey, claimed, drag, onEdit, onMove, canMoveUp, canMoveDown, showCategory }: Props) {
+export function QuestRow({ item, todayKey, claimed, drag, onEdit, onMove, canMoveUp, canMoveDown, showCategory, plan }: Props) {
   const { quest } = item
   const toast = useToast()
   const feedback = useCompleteFeedback()
+  const openToday = useOpenToday()
   const { state, reason } = checkState(item, todayKey, claimed)
   const muted = state === 'missed' || state === 'locked' || state === 'doneFixed'
   const struck = item.done
@@ -58,9 +67,20 @@ export function QuestRow({ item, todayKey, claimed, drag, onEdit, onMove, canMov
       if (ok === false) toast.show('This one can’t be undone anymore.')
     } else {
       feedback()
+      const last = isDueToday(item) && openToday === 1
       const ok = await toast.run(() => completeQuest(quest.id))
       if (ok === false) toast.show('Can only be completed on its due day.')
+      else if (ok) await celebrate(last)
     }
+  }
+
+  // Right after a check: name the identity this quest votes for (so the link registers when it matters), and when it
+  // was the last thing today asked for, offer the claim right here instead of making the user find the calendar.
+  async function celebrate(last: boolean) {
+    const identity = quest.identityId ? await db.identities.get(quest.identityId) : undefined
+    const vote = identity && !identity.deletedAt ? `+1 vote for: ${identity.statement}.` : ''
+    if (last) toast.show(`${vote ? `${vote} ` : ''}That’s everything for today.`, 'info', { label: 'Claim stones', onClick: () => void requestClaim() })
+    else if (vote) toast.show(vote, 'info')
   }
 
   return (
@@ -100,6 +120,7 @@ export function QuestRow({ item, todayKey, claimed, drag, onEdit, onMove, canMov
               {showCategory && caption && !/^(Mon|Tue|Wed|Thu|Fri|Sat|Sun)\b/.test(caption) ? caption.charAt(0).toLowerCase() + caption.slice(1) : caption}
             </p>
           )}
+          {plan && <PlanLine plan={plan} title={quest.title} done={item.done} />}
           {quest.note && (
             <p className="mt-1 flex gap-1.5 text-[12.5px] leading-5 text-muted">
               <StickyNote aria-hidden className="mt-[3px] size-3 shrink-0 text-faint" strokeWidth={1.75} />
@@ -122,3 +143,4 @@ export function QuestRow({ item, todayKey, claimed, drag, onEdit, onMove, canMov
     </motion.li>
   )
 }
+

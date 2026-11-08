@@ -6,6 +6,7 @@ import type { ProjectSummary } from '../../board/hooks'
 import type { QuestItem } from '../hooks'
 import { CATEGORY } from '../meta'
 import { describeProject } from './describe'
+import { PlanLine, type RowPlan } from './PlanLine'
 import type { RowDrag } from './QuestRow'
 import { RowActions } from './RowActions'
 
@@ -18,10 +19,11 @@ interface Props {
   onMove?: (direction: -1 | 1) => void
   canMoveUp?: boolean
   canMoveDown?: boolean
+  plan?: RowPlan // Today list only: this project's work session in today's plan
 }
 
 // A project in the quest list: no checkbox (stages are finished on the board). The whole row opens the board.
-export function ProjectRow({ item, summary, todayKey, drag, onEdit, onMove, canMoveUp, canMoveDown }: Props) {
+export function ProjectRow({ item, summary, todayKey, drag, onEdit, onMove, canMoveUp, canMoveDown, plan }: Props) {
   const { quest } = item
   const meta = CATEGORY[quest.category]
   const done = !!quest.projectDoneAt
@@ -86,6 +88,12 @@ export function ProjectRow({ item, summary, todayKey, drag, onEdit, onMove, canM
               )}
             </span>
           </div>
+          {/* Above the row's full-size link, so the time and "Move to" stay clickable. */}
+          {plan && (
+            <div className="relative z-10 w-fit">
+              <PlanLine plan={plan} title={quest.title} done={done || !!item.workedToday} />
+            </div>
+          )}
         </div>
 
         <RowActions

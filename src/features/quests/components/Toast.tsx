@@ -2,12 +2,13 @@ import { CircleAlert, CircleCheck, X } from 'lucide-react'
 import { AnimatePresence, motion } from 'motion/react'
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { QuestError } from '../repo'
-import { ToastContext, type Tone } from './toastContext'
+import { ToastContext, type Tone, type ToastAction } from './toastContext'
 
 interface ToastItem {
   id: number
   message: string
   tone: Tone
+  action?: ToastAction
 }
 
 export function ToastProvider({ children }: { children: ReactNode }) {
@@ -16,10 +17,10 @@ export function ToastProvider({ children }: { children: ReactNode }) {
 
   const dismiss = useCallback((id: number) => setToasts((list) => list.filter((t) => t.id !== id)), [])
 
-  const show = useCallback((message: string, tone: Tone = 'error') => {
+  const show = useCallback((message: string, tone: Tone = 'error', action?: ToastAction) => {
     const id = ++next.current
     // One at a time keeps it calm; a repeat of the same message just restarts the timer.
-    setToasts([{ id, message, tone }])
+    setToasts([{ id, message, tone, action }])
   }, [])
 
   const run = useCallback(
@@ -56,9 +57,10 @@ export function ToastProvider({ children }: { children: ReactNode }) {
 
 function Toast({ item, onDone }: { item: ToastItem; onDone: () => void }) {
   useEffect(() => {
-    const timer = setTimeout(onDone, 4200)
+    // A toast with a button stays longer, so there's time to reach it.
+    const timer = setTimeout(onDone, item.action ? 8000 : 4200)
     return () => clearTimeout(timer)
-  }, [onDone])
+  }, [onDone, item.action])
   const Icon = item.tone === 'error' ? CircleAlert : CircleCheck
   return (
     <motion.div
@@ -71,6 +73,18 @@ function Toast({ item, onDone }: { item: ToastItem; onDone: () => void }) {
     >
       <Icon aria-hidden className={`size-4 shrink-0 ${item.tone === 'error' ? 'text-mq-ink' : 'text-dq-ink'}`} strokeWidth={1.75} />
       <span className="min-w-0 flex-1">{item.message}</span>
+      {item.action && (
+        <button
+          type="button"
+          onClick={() => {
+            item.action!.onClick()
+            onDone()
+          }}
+          className="shrink-0 rounded-chip bg-blaze px-3 py-1 text-[13px] font-semibold text-on-blaze transition hover:opacity-90 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none active:scale-[.97]"
+        >
+          {item.action.label}
+        </button>
+      )}
       <button
         type="button"
         onClick={onDone}

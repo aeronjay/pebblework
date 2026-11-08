@@ -69,14 +69,15 @@ The rest of the app follows a few rules:
 | | |
 |---|---|
 | **Quests** | Three kinds, each with its own color and stone: **Daily** (rituals on the days you pick: every day, weekdays, or Mon/Wed/Fri), **Main** (the big moves), and **Side** (errands, if time allows). Press <kbd>N</kbd> anywhere on Home to add one. |
+| **Plan today** | Each morning Home asks you to pick up to 3 quests and give each a start time, with an optional "if it slips, I'll…" fallback. Planned quests lead the Today list by time, with a **Next up** marker and a one-tap **Move to…** once a time has passed. On a new week, a new month, or after a few quiet days, the prompt opens with a fresh start. Planning earns no stones; doing does. |
 | **Quest calendar** | A month grid that marks each day as pending, ready to claim, or claimed. One **Claim** button sweeps up every finished day at once. Heavier days drop more stones, like a GitHub contribution graph. |
-| **The jar** | A physics-simulated jar (matter-js) where stones drop, bounce and settle. Its capacity scales with your quest load. Now and then a stone comes out golden. |
+| **The jar** | A physics-simulated jar (matter-js) where stones drop, bounce and settle. Its capacity scales with your quest load. Now and then a stone comes out golden. A jar that replaces a sealed one starts with 3 stones already in it. |
 | **Backup reminder** | When your last backup is a month old, Home suggests downloading one. "Later" snoozes it for two weeks. |
 | **Projects** | Break bigger goals into Kanban boards with draggable columns, cards and subtasks. Every stage you finish earns a stone. |
 | **Shelf** | Filled jars get sealed, labeled with their date range and kept, along with a breakdown by quest type. |
-| **Insights** | Current and longest runs, days you showed up, your strongest weekday, what you finish most, and the last 12 weeks. |
+| **Insights** | Current and longest runs (one missed day won't break a run; two in a row will), days you showed up, your strongest weekday, what you finish most, and the last 12 weeks. |
 | **Weekly review** | Three short prompts: what went well, what got in the way, and one tweak for next week. |
-| **Identity** | Write "who I'm becoming" statements and link quests to them. |
+| **Identity** | Write "who I'm becoming" statements and link quests to them. Finishing a linked quest shows "+1 vote for" that statement. |
 | **Notes** | Plans, thoughts and what got in the way, all in one place. |
 | **Loose ends** | Quick, one-off reminders on Home that stay outside the quest and reward loop. |
 | **Themes** | Light, dark, or follow the system. The jar canvas follows the theme too. |

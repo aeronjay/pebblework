@@ -226,6 +226,23 @@ export interface Stone extends Meta {
   weight: 1 | 2 | 3
   rarity: Rarity
   at: string // ISO claim time, staggered 1ms per stone; order = (at, id) = drop order
+  starter?: true // carried into a fresh jar when the last one sealed (a head start), not earned by a completion
+}
+
+// One quest given a start time in the morning plan: an implementation intention ("at 9:00 I'll …"), with an optional
+// fallback for when the day doesn't go to plan.
+export interface PlanSlot {
+  questId?: string // a quest or project…
+  taskId?: string // …or a loose end; exactly one of the two is set
+  time: string // "HH:mm"
+  ifThen?: string // "If it slips, I'll …"
+}
+
+// Today's plan: a few quests with start times, not the whole day. `skipped` = "Not today" (the prompt stays quiet).
+export interface DayPlan extends Meta {
+  dayKey: string // primary key
+  slots: PlanSlot[] // at most MAX_PLAN_SLOTS, sorted by time
+  skipped?: boolean
 }
 
 // Free-form note. `questId` optionally links it to a project quest; the link survives the quest's deletion.

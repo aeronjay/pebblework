@@ -1,7 +1,8 @@
 import { db, getDeviceId, newId, newMeta, type MarbleDB } from '../../db/db'
 import type { Jar, Quest, QuestCompletion, Stone } from '../../db/types'
+import { STARTER_MARBLES } from '../marbles/config'
 import { rollRarity, type Rng } from '../marbles/engine'
-import { claimableDays, dayKey, isUndated, jarCapacityFor, stonesForDay, unclaimed } from './day'
+import { CATEGORY_ORDER, claimableDays, dayKey, isUndated, jarCapacityFor, stonesForDay, unclaimed } from './day'
 
 export interface ClaimResult {
   days: string[] // claimed this call, oldest first
@@ -43,6 +44,25 @@ export async function sealedQuestJarCount(database: MarbleDB = db): Promise<numb
   return database.jars.where('kind').equals('quest').filter((j) => !!j.sealedAt && !j.deletedAt).count()
 }
 
+// Endowed progress: a jar that's already a little full gets finished more often than an empty one. So a jar that
+// replaces a sealed one starts with a few starter stones, one of each kind (weight 1, normal), counted toward its
+// capacity. They're not in ClaimResult.stones: the jar drops them in once the claim animation has played. The very first
+// jar starts empty, so the first stones you see are ones you earned.
+export function starterStones(jarId: string, key: string, now: Date): Stone[] {
+  const iso = now.toISOString()
+  return Array.from({ length: STARTER_MARBLES }, (_, i) => ({
+    id: newId(),
+    jarId,
+    dayKey: key,
+    category: CATEGORY_ORDER[i % CATEGORY_ORDER.length],
+    weight: 1 as const,
+    rarity: 'normal' as const,
+    at: new Date(now.getTime() - STARTER_MARBLES + i).toISOString(), // before the claim's own stones in drop order
+    starter: true as const,
+    ...newMeta(iso),
+  }))
+}
+
 const EMPTY: ClaimResult = { days: [], stones: [], filledJarIds: [] }
 
 // Claims every unclaimed completion on ready days up to today, in one rw transaction. A day claimed earlier can be
@@ -75,6 +95,7 @@ export async function claimAll(database: MarbleDB = db, now: Date = new Date(), 
     }
 
     const stones: Stone[] = []
+    const starters: Stone[] = []
     const filledJarIds: string[] = []
     for (const key of days) {
       const firstJarId = jar.id
@@ -91,7 +112,9 @@ export async function claimAll(database: MarbleDB = db, now: Date = new Date(), 
           await database.jars.update(jar.id, { sealedAt: iso, updatedAt: iso, deviceId: getDeviceId() })
           filledJarIds.push(jar.id)
           jar = await createQuestJar(database, now, quests)
-          fill = 0
+          const head = starterStones(jar.id, today, now)
+          starters.push(...head)
+          fill = head.reduce((n, st) => n + st.weight, 0)
         }
       }
       const mark = { claimedAt: iso, claimJarId: firstJarId, updatedAt: iso, deviceId: getDeviceId() }
@@ -104,7 +127,7 @@ export async function claimAll(database: MarbleDB = db, now: Date = new Date(), 
         await database.dayClaims.add({ dayKey: key, jarId: firstJarId, claimedAt: iso, weight, ...newMeta(iso) })
       }
     }
-    await database.stones.bulkAdd(stones)
+    await database.stones.bulkAdd([...stones, ...starters])
     return { days, stones, filledJarIds }
   })
 }

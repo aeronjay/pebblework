@@ -276,7 +276,13 @@ describe('claimAll', () => {
     const jar2 = await getActiveQuestJar(d)
     expect(jar2?.id).not.toBe(jar1.id)
     const inJar2 = (await d.stones.where('jarId').equals(jar2!.id).toArray()).reduce((n, s) => n + s.weight, 0)
-    expect(inJar1 + inJar2).toBe(26)
+    expect(inJar1 + inJar2).toBe(26 + 3) // + the fresh jar's 3 starter stones
+    const starters = (await d.stones.where('jarId').equals(jar2!.id).toArray()).filter((s) => s.starter)
+    expect(starters).toHaveLength(3)
+    expect(starters.map((s) => s.category).sort()).toEqual(['dq', 'mq', 'sq'])
+    // Starters aren't part of the claim's own drop (the jar drops them in after the animation).
+    expect(r.stones.some((s) => s.starter)).toBe(false)
+    expect((await d.stones.where('jarId').equals(jar1.id).toArray()).some((s) => s.starter)).toBe(false)
     // Overflow stones are the tail of the drop order.
     const tail = r.stones.slice(r.stones.findIndex((s) => s.jarId === jar2!.id))
     expect(tail.every((s) => s.jarId === jar2!.id)).toBe(true)
@@ -291,10 +297,11 @@ describe('claimAll', () => {
     for (let n = 0; n < 50; n++) await completeQuest(id, at(day(n)), d)
     const r = await claimAll(d, at(day(49), 20), normal)
     expect(r.days).toHaveLength(50)
-    expect(r.filledJarIds).toHaveLength(2) // 21 + 21, 8 left over
+    expect(r.filledJarIds).toHaveLength(2) // 21, then 3 starters + 18, then 3 starters + the 11 left over
     expect(await sealedQuestJarCount(d)).toBe(2)
     const active = await getActiveQuestJar(d)
-    expect(await d.stones.where('jarId').equals(active!.id).count()).toBe(8)
+    expect(await d.stones.where('jarId').equals(active!.id).count()).toBe(14)
+    expect(await d.stones.filter((s) => !!s.starter).count()).toBe(6)
   })
 
   it('rolls rarity per stone', async () => {

@@ -26,7 +26,7 @@ const rubber = (d: number) => Math.sign(d) * DRAG_REACH * (1 - Math.exp(-Math.ab
 
 interface Shown {
   capacity: number
-  stones: Pick<Stone, 'id' | 'category' | 'weight'>[]
+  stones: Pick<Stone, 'id' | 'category' | 'weight' | 'starter'>[]
   jarsFilled: number
 }
 
@@ -380,7 +380,9 @@ export function QuestJar() {
           ? 'Full! Sealing this jar…'
           : fill >= ALMOST_FULL
             ? `Only ${toGo} to go`
-            : `${toGo} to go until this jar is full`
+            : s.stones.every((x) => x.starter)
+              ? `A head start: ${s.stones.length} stones carried over. ${toGo} to go`
+              : `${toGo} to go until this jar is full`
 
   return (
     <MotionConfig reducedMotion="user">

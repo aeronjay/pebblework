@@ -115,6 +115,7 @@ describe('runs over rest days', () => {
     expect(currentStreak(days, NOW, rest)).toBe(4) // today (Tue) is a rest day and still open
     expect(currentStreak(days, NOW)).toBe(1) // without schedules: just yesterday
     expect(bestStreak(days, rest)).toBe(4)
-    expect(bestStreak(new Set(['2026-11-02', '2026-11-06']), rest)).toBe(1) // Wed was scheduled and missed
+    expect(bestStreak(new Set(['2026-11-02', '2026-11-06']), rest)).toBe(2) // Wed was missed: one miss doesn't break a run
+    expect(bestStreak(new Set(['2026-11-02', '2026-11-09']), rest)).toBe(1) // Wed and Fri missed: two in a row do
   })
 })

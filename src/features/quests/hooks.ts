@@ -10,6 +10,7 @@ import {
   dayKey,
   daySummary,
   isMissed,
+  isProject,
   isQuestCompletion,
   isQuestDone,
   jarCapacityFor,
@@ -97,6 +98,7 @@ export interface QuestItem {
   canUncomplete: boolean // done today and that completion isn't claimed yet
   missed: boolean // offer "Do it today" when missed && !quest.redoneAs
   claimed?: boolean // today's completion of the quest itself has been claimed (permanent)
+  workedToday?: boolean // projects: a card, subtask or the project itself was finished today
 }
 
 export interface QuestToday extends DaySummary {
@@ -113,6 +115,7 @@ export function useQuestToday(): QuestToday | undefined {
     const [all, completions, claim] = await Promise.all([allQuests(), liveCompletions(), db.dayClaims.get(todayKey)])
     const claimed = !!claim
     const quests = (await liveQuests()).filter((q) => !q.archivedAt) // archived projects are filed away
+    const touchedToday = new Set(completions.filter((c) => c.dayKey === todayKey).map((c) => c.questId))
     const byQuest = new Map<string, QuestCompletion[]>()
     for (const c of completions) if (isQuestCompletion(c)) byQuest.set(c.questId, [...(byQuest.get(c.questId) ?? []), c])
     const items = quests.map((quest): QuestItem => {
@@ -128,6 +131,7 @@ export function useQuestToday(): QuestToday | undefined {
         canUncomplete: canUncomplete(quest, mine, claimed, today),
         missed: isMissed(quest, mine, today),
         claimed: claimedToday,
+        workedToday: isProject(quest) ? touchedToday.has(quest.id) : undefined,
       }
     })
     return { todayKey, claimed, items, ...daySummary(todayKey, all, completions, claimed, today) }

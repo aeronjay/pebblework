@@ -7,7 +7,7 @@ import { useToday } from '../../app/useToday'
 import { getSettings } from '../../db/db'
 import { buzz, primeAudio } from '../jar/feedback'
 import { claimAll } from '../quests/claim'
-import { emitClaim } from '../quests/claimBus'
+import { emitClaim, onClaimRequest } from '../quests/claimBus'
 import { dayKey, monthGrid, type MonthDay } from '../quests/day'
 import { useClaimable, useMonth } from '../quests/hooks'
 import { ClaimButton } from './ClaimButton'
@@ -134,6 +134,13 @@ export function QuestCalendar() {
     setFocusKey(key)
     if (!isSameMonth(target, month)) goTo(target, key)
   }
+
+  // Claims asked for elsewhere (the "Claim" action on the last-quest toast) run through the same flow.
+  const claimRef = useRef<() => Promise<void>>(async () => {})
+  useEffect(() => {
+    claimRef.current = claim
+  })
+  useEffect(() => onClaimRequest(() => void claimRef.current()), [])
 
   async function claim() {
     if (busyRef.current || !claimable.days.length) return

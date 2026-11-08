@@ -1,10 +1,15 @@
 import { format } from 'date-fns'
-import { Plus } from 'lucide-react'
+import { CalendarClock, Plus } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { useToday } from '../app/useToday'
 import { BackupNudge } from '../features/backup/BackupNudge'
 import { QuestCalendar } from '../features/calendar/QuestCalendar'
 import { NowPanel } from '../features/focus/NowPanel'
+import { usePlan } from '../features/plan/hooks'
+import { freshStart, liveSlots, planCandidates, taskCandidates } from '../features/plan/model'
+import { PlanPrompt } from '../features/plan/PlanPrompt'
+import { PlanSheet } from '../features/plan/PlanSheet'
+import { useTasks } from '../features/tasks/hooks'
 import { QuestJar } from '../features/jar/QuestJar'
 import { DayProgress } from '../features/quests/components/DayProgress'
 import { QuestLists } from '../features/quests/components/QuestLists'
@@ -28,11 +33,12 @@ function Home() {
   const today = useToday()
   const quests = useQuestToday()
   const [sheet, setSheet] = useState<SheetTarget | null>(null)
+  const [planning, setPlanning] = useState(false)
 
   // "N" opens a new quest, unless the user is typing somewhere.
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
-      if (e.key !== 'n' || e.metaKey || e.ctrlKey || e.altKey || sheet) return
+      if (e.key !== 'n' || e.metaKey || e.ctrlKey || e.altKey || sheet || planning) return
       const el = e.target as HTMLElement
       if (el.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName)) return
       e.preventDefault()
@@ -40,20 +46,27 @@ function Home() {
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [sheet])
+  }, [sheet, planning])
 
   const todayKey = quests?.todayKey ?? format(today, 'yyyy-MM-dd')
+  const planState = usePlan(todayKey)
+  const plan = planState?.plan
+  const tasks = useTasks()
+  const slots = quests ? liveSlots(plan, quests.items, tasks) : []
+  // The morning card asks once; after a plan or "Not today" the header button is the way in.
+  const prompt = !!quests && !!planState && !plan && (planCandidates(quests.items).length > 0 || taskCandidates(tasks ?? []).length > 0)
 
   // Two zones: the desk (what to do: today, in progress, the quest lists behind their Today / All / per-list tabs) and the stage (what you've earned: the jar and
   // the calendar you claim from), on its own panel that follows the app theme.
-  // `tall` (≥1024 wide and ≥700 high): a no-scroll app shell; only the quest list scrolls. `lg` but short: the same two
-  // columns, with page scroll. Below lg both zones dissolve (display: contents) into one column ordered by `order-*`:
+  // `tall` (≥1024 wide and ≥700 high): a no-scroll app shell; the desk column scrolls on its own (the quest tabs stick
+  // to its top) and the stage stays put. `lg` but short: the same two columns, with page scroll. Below lg both zones dissolve (display: contents) into one column ordered by `order-*`:
   // today, in progress, jar, quests, calendar.
   return (
     <>
       <div className="flex flex-col gap-6 px-4 pt-6 pb-10 md:px-8 md:pt-8 lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(420px,40%)] lg:items-start lg:gap-0 lg:p-0 xl:grid-cols-[minmax(0,1fr)_minmax(480px,38%)] tall:h-dvh tall:items-stretch">
-        <div className="contents lg:flex lg:min-w-0 lg:flex-col lg:gap-8 lg:pt-10 lg:pl-10 lg:pr-8 xl:pl-14 xl:pr-12 tall:min-h-0">
-          <header className="order-1">
+        <div className="contents lg:flex lg:min-w-0 lg:flex-col lg:gap-8 lg:pt-10 lg:pl-10 lg:pr-8 xl:pl-14 xl:pr-12 tall:min-h-0 tall:overflow-y-auto tall:pt-0 tall:[scrollbar-gutter:stable]">
+          {/* In the tall shell the header carries the top padding: on the scroller itself it would open a gap above the stuck tabs. */}
+          <header className="order-1 tall:pt-10">
             <div className="flex items-start justify-between gap-4">
               <div className="min-w-0">
                 <h1 className="font-display text-[44px] leading-[0.95] font-normal tracking-[-0.03em] text-ink md:text-[56px]">
@@ -61,32 +74,46 @@ function Home() {
                 </h1>
                 <p className="mt-2 text-[15px] text-muted">{format(today, 'MMMM d, yyyy')}</p>
               </div>
-              <button
-                type="button"
-                onClick={() => setSheet({ mode: 'create', category: 'dq' })}
-                aria-keyshortcuts="N"
-                className={`${ui.cta} mt-1 shrink-0`}
-              >
-                <Plus aria-hidden className="size-4" strokeWidth={2.25} />
-                New quest
-                <kbd className={ui.ctaKbd}>N</kbd>
-              </button>
+              <div className="mt-1 flex shrink-0 items-center gap-2">
+                {/* Always here, whatever happened to the morning prompt. */}
+                <button
+                  type="button"
+                  onClick={() => setPlanning(true)}
+                  aria-label={slots.length ? 'Edit today’s plan' : 'Plan today'}
+                  className="inline-flex items-center gap-2 rounded-control border border-line-strong bg-surface px-3 py-2.5 text-[14px] font-semibold text-ink transition hover:bg-sunken outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-canvas"
+                >
+                  <CalendarClock aria-hidden className="size-4" strokeWidth={2} />
+                  <span className="max-sm:hidden">{slots.length ? 'Edit plan' : 'Plan today'}</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSheet({ mode: 'create', category: 'dq' })}
+                  aria-keyshortcuts="N"
+                  className={ui.cta}
+                >
+                  <Plus aria-hidden className="size-4" strokeWidth={2.25} />
+                  New quest
+                  <kbd className={ui.ctaKbd}>N</kbd>
+                </button>
+              </div>
             </div>
             <div className="mt-6 min-h-[46px]">{quests && <DayProgress today={quests} />}</div>
           </header>
 
           <div className="order-2 flex min-w-0 flex-col gap-4">
+            {prompt && <PlanPrompt todayKey={todayKey} fresh={freshStart(todayKey, planState?.lastActive)} onPlan={() => setPlanning(true)} />}
             <BackupNudge />
             <NowPanel todayKey={todayKey} />
           </div>
 
-          {/* The one scroll region of the shell (the quest tabs stick to its top). Side padding + negative margin keep focus rings from being clipped. */}
-          <div className="order-4 min-w-0 lg:-mx-3 lg:px-3 lg:pb-12 tall:min-h-0 tall:flex-1 tall:overflow-y-auto tall:[scrollbar-gutter:stable]">
+          {/* Side padding + negative margin keep focus rings from being clipped. */}
+          <div className="order-4 min-w-0 lg:-mx-3 lg:px-3 lg:pb-12">
             {quests ? (
               <QuestLists
                 today={quests}
                 onAdd={(category) => setSheet({ mode: 'create', category })}
                 onEdit={(item) => setSheet({ mode: 'edit', item })}
+                slots={slots}
               />
             ) : (
               <ListsSkeleton />
@@ -108,6 +135,7 @@ function Home() {
       </div>
 
       <QuestSheet target={sheet} todayKey={todayKey} onClose={() => setSheet(null)} />
+      {quests && <PlanSheet open={planning} todayKey={todayKey} items={quests.items} tasks={tasks ?? []} plan={plan} onClose={() => setPlanning(false)} />}
     </>
   )
 }

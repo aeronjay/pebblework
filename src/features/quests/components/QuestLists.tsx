@@ -19,11 +19,12 @@ import { useCallback, useId, useLayoutEffect, useMemo, useRef, useState } from '
 import { createPortal } from 'react-dom'
 import { useProjects } from '../../board/hooks'
 import { arrayMove } from '../../board/components/model'
-import type { QuestCategory } from '../../../db/types'
+import type { PlanSlot, QuestCategory } from '../../../db/types'
 import type { QuestItem, QuestToday } from '../hooks'
 import { CATEGORY, CATEGORY_ORDER } from '../meta'
 import { placeQuest } from '../repo'
-import { isCategory, isQuestView, listOf, listsOf, moveTo, refusal, tabCategory, viewTabId, type Lists, type QuestView } from './lists'
+import { OpenTodayContext } from './dayContext'
+import { dayCount, isCategory, isQuestView, listOf, listsOf, moveTo, refusal, tabCategory, viewTabId, type Lists, type QuestView } from './lists'
 import { QuestSection } from './QuestSection'
 import { QuestTabs } from './QuestTabs'
 import { TodayList } from './TodayList'
@@ -55,13 +56,14 @@ interface Props {
   today: QuestToday
   onAdd: (category: QuestCategory) => void
   onEdit: (item: QuestItem) => void
+  slots: PlanSlot[] // today's plan (live slots, by time)
 }
 
 // The quest lists behind a tab bar: Today (what's due today across every list, the default), All (the DQ / MQ / SQ
 // accordions stacked, any number open) and one tab per list. The tab and the open accordions are remembered per device.
 // Quests drag to reorder within a list. Main and side quests move between lists by dragging across the stacked
 // accordions, or, on a single list's tab, onto the other list's tab.
-export function QuestLists({ today, onAdd, onEdit }: Props) {
+export function QuestLists({ today, onAdd, onEdit, slots }: Props) {
   const [open, setOpen] = useState(readOpen)
   const [view, setView] = useState(readView)
   const baseId = useId()
@@ -211,7 +213,10 @@ export function QuestLists({ today, onAdd, onEdit }: Props) {
   const active = activeId ? lookup.get(activeId) : undefined
   const activeList = activeId ? listOf(lists, activeId) : undefined
 
+  const { done: doneToday, total: dueToday } = dayCount(today.items)
+
   return (
+    <OpenTodayContext.Provider value={dueToday - doneToday}>
     <DndContext
       sensors={sensors}
       collisionDetection={collision}
@@ -245,6 +250,8 @@ export function QuestLists({ today, onAdd, onEdit }: Props) {
             onAdd={() => onAdd('dq')}
             onEdit={onEdit}
             onBrowse={() => pick('all')}
+            slots={slots}
+            projects={projects}
           />
         ) : (
           <div className="flex flex-col gap-6">
@@ -275,6 +282,7 @@ export function QuestLists({ today, onAdd, onEdit }: Props) {
         document.body,
       )}
     </DndContext>
+    </OpenTodayContext.Provider>
   )
 }
 
