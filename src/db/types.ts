@@ -238,11 +238,13 @@ export interface PlanSlot {
   ifThen?: string // "If it slips, I'll …"
 }
 
-// Today's plan: a few quests with start times, not the whole day. `skipped` = "Not today" (the prompt stays quiet).
+// A day's plan: a few quests with start times, not the whole day. `skipped` = "Not today" (the prompt stays quiet).
+// Usually made the evening before; `reviewedAt` = looked over (or changed) on the day itself.
 export interface DayPlan extends Meta {
   dayKey: string // primary key
   slots: PlanSlot[] // at most MAX_PLAN_SLOTS, sorted by time
   skipped?: boolean
+  reviewedAt?: string
 }
 
 // Free-form note. `questId` optionally links it to a project quest; the link survives the quest's deletion.

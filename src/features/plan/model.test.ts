@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { DayPlan, Quest, Task } from '../../db/types'
 import type { QuestItem } from '../quests/hooks'
-import { freshStart, laterTime, liveSlots, nextSlot, orderByPlan, planCandidates, planGroup, planKind, slotKey, sortSlots, suggestTime, taskCandidates } from './model'
+import { freshStart, isEvening, laterTime, liveSlots, nextSlot, orderByPlan, planCandidates, planClock, planGroup, planGroups, planKind, slotKey, sortSlots, suggestTime, taskCandidates } from './model'
 
 const quest = (id: string, category: Quest['category'], extra: Partial<Quest> = {}): Quest => ({
   id,
@@ -51,7 +51,7 @@ describe('candidates', () => {
 
   it('says how each one gets into today', () => {
     const kind = (id: string) => planKind(items.find((i) => i.quest.id === id)!)
-    expect([kind('walk'), kind('someday'), kind('later'), kind('passport'), kind('game')]).toEqual(['today', 'today', 'moved', 'redo', 'project'])
+    expect([kind('walk'), kind('someday'), kind('later'), kind('passport'), kind('game')]).toEqual(['ready', 'ready', 'moved', 'redo', 'project'])
     expect([kind('read'), kind('rest'), kind('redone'), kind('shipped')]).toEqual([undefined, undefined, undefined, undefined])
   })
 
@@ -67,7 +67,45 @@ describe('candidates', () => {
     expect(nextSlot(slots, [game, walk])?.questId).toBe('game')
     expect(nextSlot(slots, [{ ...game, workedToday: true }, walk])?.questId).toBe('walk')
   })
+})
 
+describe('planning tomorrow, the evening before', () => {
+  const TOMORROW = '2026-11-05' // a Thursday
+  const items = [
+    item(quest('walk', 'dq'), { done: true, doneToday: true }), // done today, runs again tomorrow
+    item(quest('weekdays', 'dq', { schedule: [{ from: '2026-11-01', days: [1, 2, 3, 5] }] })), // rests on Thursdays
+    item(quest('report', 'mq', { dueDate: '2026-11-04' })), // still open today
+    item(quest('filed', 'mq', { dueDate: '2026-11-04' }), { done: true, doneToday: true }),
+    item(quest('errand', 'sq', { dueDate: TOMORROW }), { when: 'upcoming', canComplete: false }),
+    item(quest('later', 'mq', { dueDate: '2026-11-09' }), { when: 'upcoming', canComplete: false }),
+    item(quest('someday', 'sq'), { when: 'anytime' }),
+    item(quest('passport', 'mq', { dueDate: '2026-11-01' }), { when: 'missed', missed: true, canComplete: false }),
+    item(quest('game', 'mq', { isProject: true }), { when: 'anytime', canComplete: false }),
+  ]
+  const of = (id: string) => items.find((i) => i.quest.id === id)!
+
+  it('candidates are what could be worked on tomorrow, in the sheet\'s order', () => {
+    expect(planCandidates(items, TOMORROW).map((i) => i.quest.id)).toEqual(['report', 'passport', 'game', 'later', 'errand', 'someday', 'walk'])
+  })
+
+  it('says how each one gets into tomorrow and where it sits in the sheet', () => {
+    const ids = ['walk', 'errand', 'someday', 'report', 'later', 'passport', 'game']
+    expect(ids.map((id) => planKind(of(id), TOMORROW))).toEqual(['ready', 'ready', 'ready', 'moved', 'moved', 'redo', 'project'])
+    expect(ids.map((id) => planGroup(of(id), TOMORROW))).toEqual(['due', 'due', 'anytime', 'leftover', 'moved', 'redo', 'project'])
+    expect([planKind(of('weekdays'), TOMORROW), planKind(of('filed'), TOMORROW)]).toEqual([undefined, undefined])
+  })
+
+  it('"Still open today" is a tomorrow-only section', () => {
+    expect(planGroups('today').map((g) => g.group)).not.toContain('leftover')
+    expect(planGroups('tomorrow').map((g) => g.label)).toEqual(['Due tomorrow', 'Still open today', 'Missed', 'No date', 'Projects', 'Due later'])
+  })
+
+  it('evening starts at 6 PM; tomorrow\'s times are suggested from the morning, not from now', () => {
+    expect([isEvening(at(17, 59)), isEvening(at(18))]).toEqual([false, true])
+    expect(suggestTime(undefined, undefined, planClock(at(21, 40), 'tomorrow'))).toBe('09:00')
+    expect(suggestTime('07:00', undefined, planClock(at(21, 40), 'tomorrow'))).toBe('09:00')
+    expect(suggestTime(undefined, undefined, planClock(at(21, 40), 'today'))).toBe('22:00')
+  })
 })
 
 describe('slots on the Today list', () => {

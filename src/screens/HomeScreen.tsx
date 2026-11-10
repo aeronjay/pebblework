@@ -5,9 +5,11 @@ import { useToday } from '../app/useToday'
 import { BackupNudge } from '../features/backup/BackupNudge'
 import { QuestCalendar } from '../features/calendar/QuestCalendar'
 import { NowPanel } from '../features/focus/NowPanel'
-import { usePlan } from '../features/plan/hooks'
-import { freshStart, liveSlots, planCandidates, taskCandidates } from '../features/plan/model'
-import { PlanPrompt } from '../features/plan/PlanPrompt'
+import { useNotTonight, useNow, usePlan } from '../features/plan/hooks'
+import { freshStart, isEvening, isHandled, liveSlots, needsReview, planCandidates, planDayKey, taskCandidates, type PlanDay } from '../features/plan/model'
+import { PlanPreview, PlanPrompt, type PreviewLine } from '../features/plan/PlanPrompt'
+import { reviewPlan, skipPlan } from '../features/plan/repo'
+import type { DayPlan } from '../db/types'
 import { PlanSheet } from '../features/plan/PlanSheet'
 import { useTasks } from '../features/tasks/hooks'
 import { QuestJar } from '../features/jar/QuestJar'
@@ -15,6 +17,7 @@ import { DayProgress } from '../features/quests/components/DayProgress'
 import { QuestLists } from '../features/quests/components/QuestLists'
 import { QuestSheet, type SheetTarget } from '../features/quests/components/QuestSheet'
 import { ToastProvider } from '../features/quests/components/Toast'
+import { useToast } from '../features/quests/components/toastContext'
 import { useQuestToday } from '../features/quests/hooks'
 import { ui } from '../ui/styles'
 
@@ -33,7 +36,7 @@ function Home() {
   const today = useToday()
   const quests = useQuestToday()
   const [sheet, setSheet] = useState<SheetTarget | null>(null)
-  const [planning, setPlanning] = useState(false)
+  const [planning, setPlanning] = useState<PlanDay | null>(null)
 
   // "N" opens a new quest, unless the user is typing somewhere.
   useEffect(() => {
@@ -52,9 +55,32 @@ function Home() {
   const planState = usePlan(todayKey)
   const plan = planState?.plan
   const tasks = useTasks()
+  const toast = useToast()
+  const now = useNow()
   const slots = quests ? liveSlots(plan, quests.items, tasks) : []
-  // The morning card asks once; after a plan or "Not today" the header button is the way in.
-  const prompt = !!quests && !!planState && !plan && (planCandidates(quests.items).length > 0 || taskCandidates(tasks ?? []).length > 0)
+  // Evenings are for tomorrow: plan it the night before so the day starts with something to look forward to. Daytime
+  // (or a morning with no plan from last night) is for today. Either card asks once; after that the header button is
+  // the way in.
+  const evening = isEvening(now)
+  const tomorrowKey = planDayKey(todayKey, 'tomorrow')
+  const [notTonight, skipTonight] = useNotTonight(tomorrowKey)
+  const hasCandidates = (ahead?: string) => !!quests && (planCandidates(quests.items, ahead).length > 0 || taskCandidates(tasks ?? []).length > 0)
+  const prompt: PlanDay | null = !quests || !planState
+    ? null
+    : evening
+      ? !planState.tomorrow && !notTonight && hasCandidates(tomorrowKey) ? 'tomorrow' : null
+      : !plan && hasCandidates() ? 'today' : null
+  const linesOf = (p: DayPlan): PreviewLine[] =>
+    liveSlots(p, quests?.items ?? [], tasks).map((slot) => {
+      const item = slot.questId ? quests?.items.find((i) => i.quest.id === slot.questId) : undefined
+      const task = slot.taskId ? tasks?.find((t) => t.id === slot.taskId) : undefined
+      return { slot, title: item?.quest.title ?? task?.title ?? '', done: item ? isHandled(item) : !!task?.completedAt }
+    })
+  const tomorrowLines = evening && quests && planState?.tomorrow ? linesOf(planState.tomorrow) : null
+  // The morning after: last night's plan, shown for a quick look until "Looks good" or any change to it.
+  const review = !evening && !!quests && needsReview(plan, todayKey) ? linesOf(plan!) : null
+  const headerDay: PlanDay = evening ? 'tomorrow' : 'today'
+  const headerPlanned = evening ? !!tomorrowLines?.length : slots.length > 0
 
   // Two zones: the desk (what to do: today, in progress, the quest lists behind their Today / All / per-list tabs) and the stage (what you've earned: the jar and
   // the calendar you claim from), on its own panel that follows the app theme.
@@ -78,12 +104,12 @@ function Home() {
                 {/* Always here, whatever happened to the morning prompt. */}
                 <button
                   type="button"
-                  onClick={() => setPlanning(true)}
-                  aria-label={slots.length ? 'Edit today’s plan' : 'Plan today'}
+                  onClick={() => setPlanning(headerDay)}
+                  aria-label={headerPlanned ? `Edit ${headerDay}’s plan` : `Plan ${headerDay}`}
                   className="inline-flex items-center gap-2 rounded-control border border-line-strong bg-surface px-3 py-2.5 text-[14px] font-semibold text-ink transition hover:bg-sunken outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-canvas"
                 >
                   <CalendarClock aria-hidden className="size-4" strokeWidth={2} />
-                  <span className="max-sm:hidden">{slots.length ? 'Edit plan' : 'Plan today'}</span>
+                  <span className="max-sm:hidden">{headerPlanned ? (evening ? 'Edit tomorrow' : 'Edit plan') : `Plan ${headerDay}`}</span>
                 </button>
                 <button
                   type="button"
@@ -101,7 +127,26 @@ function Home() {
           </header>
 
           <div className="order-2 flex min-w-0 flex-col gap-4">
-            {prompt && <PlanPrompt todayKey={todayKey} fresh={freshStart(todayKey, planState?.lastActive)} onPlan={() => setPlanning(true)} />}
+            {prompt === 'today' && (
+              <PlanPrompt
+                day="today"
+                fresh={freshStart(todayKey, planState?.lastActive)}
+                onPlan={() => setPlanning('today')}
+                onSkip={() => void toast.run(() => skipPlan(todayKey))}
+              />
+            )}
+            {/* Tonight's ask for tomorrow: a new week or month still counts; "welcome back" is for the morning. */}
+            {prompt === 'tomorrow' && <PlanPrompt day="tomorrow" fresh={freshStart(tomorrowKey, undefined)} onPlan={() => setPlanning('tomorrow')} onSkip={skipTonight} />}
+            {tomorrowLines && <PlanPreview variant="tomorrow" dayKey={tomorrowKey} lines={tomorrowLines} onEdit={() => setPlanning('tomorrow')} />}
+            {review && (
+              <PlanPreview
+                variant="review"
+                dayKey={todayKey}
+                lines={review}
+                onEdit={() => setPlanning('today')}
+                onConfirm={() => void toast.run(() => reviewPlan(todayKey))}
+              />
+            )}
             <BackupNudge />
             <NowPanel todayKey={todayKey} />
           </div>
@@ -135,7 +180,17 @@ function Home() {
       </div>
 
       <QuestSheet target={sheet} todayKey={todayKey} onClose={() => setSheet(null)} />
-      {quests && <PlanSheet open={planning} todayKey={todayKey} items={quests.items} tasks={tasks ?? []} plan={plan} onClose={() => setPlanning(false)} />}
+      {quests && (
+        <PlanSheet
+          open={!!planning}
+          day={planning ?? 'today'}
+          todayKey={todayKey}
+          items={quests.items}
+          tasks={tasks ?? []}
+          plans={{ today: plan, tomorrow: planState?.tomorrow }}
+          onClose={() => setPlanning(null)}
+        />
+      )}
     </>
   )
 }

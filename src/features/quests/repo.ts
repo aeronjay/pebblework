@@ -150,7 +150,8 @@ export async function deleteQuest(id: string, now: Date = new Date(), database: 
 }
 
 // A missed MQ/SQ can't move (that would retro-unblock its day), so it's copied to today instead.
-export async function doItToday(id: string, now: Date = new Date(), database: MarbleDB = db): Promise<string> {
+// `on` dates the copy for a later day instead (planning tomorrow the evening before).
+export async function doItToday(id: string, now: Date = new Date(), database: MarbleDB = db, on: string = dayKey(now)): Promise<string> {
   const today = dayKey(now)
   const newQuestId = newId()
   await database.transaction('rw', database.quests, database.questCompletions, async () => {
@@ -165,7 +166,7 @@ export async function doItToday(id: string, now: Date = new Date(), database: Ma
       title: q.title,
       order: await nextOrder(q.category, database),
       startDate: today,
-      dueDate: today,
+      dueDate: on > today ? on : today,
       dueTime: q.dueTime,
       note: q.note,
       identityId: q.identityId,

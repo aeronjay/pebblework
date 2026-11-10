@@ -7,23 +7,41 @@ import type { DayPlan, PlanSlot, Task } from '../../db/types'
 import { trapTab, useModal } from '../board/components/a11y'
 import { formatDayInline } from '../quests/components/describe'
 import { useToast } from '../quests/components/toastContext'
-import { parseDayKey } from '../quests/day'
+import { isoToDayKey, parseDayKey } from '../quests/day'
 import type { QuestItem } from '../quests/hooks'
 import { CATEGORY } from '../quests/meta'
 import { useNow } from './hooks'
-import { IF_THEN_MAX, MAX_PLAN_SLOTS, PLAN_GROUPS, isValidTime, planCandidates, planGroup, planKind, slotKey, suggestTime, taskCandidates } from './model'
-import { planToday, skipPlan } from './repo'
+import {
+  IF_THEN_MAX,
+  MAX_PLAN_SLOTS,
+  isValidTime,
+  planCandidates,
+  planClock,
+  planDayKey,
+  planGroup,
+  planGroups,
+  planKind,
+  slotKey,
+  suggestTime,
+  taskCandidates,
+  type PlanDay,
+} from './model'
+import { planDay, skipPlan } from './repo'
 
 interface Props {
   open: boolean
   todayKey: string
   items: QuestItem[]
   tasks: Task[] // loose ends
-  plan: DayPlan | undefined
+  plans: Record<PlanDay, DayPlan | undefined>
+  day: PlanDay // which day the sheet opens on
   onClose: () => void
 }
 
-// "Plan today": the plan itself on top (a short timeline of up to three start times), what you could add below.
+const DAYS: PlanDay[] = ['today', 'tomorrow']
+
+// "Plan today" / "Plan tomorrow": the plan itself on top (a short timeline of up to three start times), what you could
+// add below. A switch flips between the two days; each keeps its own draft until the sheet closes.
 export function PlanSheet(props: Props) {
   return createPortal(<AnimatePresence>{props.open && <Sheet {...props} />}</AnimatePresence>, document.body)
 }
@@ -51,7 +69,15 @@ const byTime = (list: Choice[]) => [...list].sort((a, b) => a.time.localeCompare
 
 const IF_THEN_EXAMPLES = ['I’ll do it right after lunch', 'I’ll do 10 minutes before dinner', 'I’ll move it to tomorrow morning']
 
-function Sheet({ todayKey, items, tasks, plan, onClose }: Props) {
+const fromPlan = (plan: DayPlan | undefined, entries: Map<string, Entry>): Choice[] =>
+  (plan?.slots ?? []).filter((s) => entries.has(slotKey(s))).map((s) => ({ key: slotKey(s), time: s.time, ifThen: s.ifThen ?? '' }))
+
+function sameDraft(a: Choice[], b: Choice[]): boolean {
+  const [x, y] = [byTime(a), byTime(b)]
+  return x.length === y.length && x.every((p, i) => p.key === y[i].key && p.time === y[i].time && p.ifThen.trim() === y[i].ifThen.trim())
+}
+
+function Sheet({ todayKey, items, tasks, plans, day: initialDay, onClose }: Props) {
   const reduce = useReducedMotion()
   const toast = useToast()
   const now = useNow()
@@ -61,23 +87,32 @@ function Sheet({ todayKey, items, tasks, plan, onClose }: Props) {
   const closeBtn = useRef<HTMLButtonElement>(null)
   useModal(closeBtn)
 
-  const entries = new Map<string, Entry>([
-    ...items.map((i) => [`q:${i.quest.id}`, questEntry(i, todayKey)] as const),
-    ...tasks.filter((t) => !t.deletedAt).map((t) => [`t:${t.id}`, taskEntry(t, todayKey)] as const),
-  ])
+  const [day, setDay] = useState<PlanDay>(initialDay)
+  const ahead = day === 'tomorrow' ? planDayKey(todayKey, 'tomorrow') : undefined
+  const plan = plans[day]
+  const entriesFor = (d: PlanDay) =>
+    new Map<string, Entry>([
+      ...items.map((i) => [`q:${i.quest.id}`, questEntry(i, todayKey, d)] as const),
+      ...tasks.filter((t) => !t.deletedAt).map((t) => [`t:${t.id}`, taskEntry(t, todayKey)] as const),
+    ])
+  const entries = entriesFor(day)
   // In time order, re-sorted when a time is committed (not while typing, so a row never jumps under the cursor).
-  const [picks, setPicks] = useState<Choice[]>(() =>
-    (plan?.slots ?? []).filter((s) => entries.has(slotKey(s))).map((s) => ({ key: slotKey(s), time: s.time, ifThen: s.ifThen ?? '' })),
-  )
+  const [drafts, setDrafts] = useState<Record<PlanDay, Choice[]>>(() => ({
+    today: fromPlan(plans.today, entries),
+    tomorrow: fromPlan(plans.tomorrow, entries),
+  }))
+  const picks = drafts[day]
+  const setPicks = (list: Choice[]) => setDrafts((d) => ({ ...d, [day]: list }))
   const [saving, setSaving] = useState(false)
+  const changed = (d: PlanDay) => !sameDraft(drafts[d], fromPlan(plans[d], entries))
 
   const picked = new Set(picks.map((p) => p.key))
   const full = picks.length >= MAX_PLAN_SLOTS
-  const candidates = planCandidates(items).filter((i) => !picked.has(`q:${i.quest.id}`))
-  const questGroups = PLAN_GROUPS.map((g) => ({
+  const candidates = planCandidates(items, ahead).filter((i) => !picked.has(`q:${i.quest.id}`))
+  const questGroups = planGroups(day).map((g) => ({
     id: g.group as string,
     label: g.label,
-    entries: candidates.filter((i) => planGroup(i) === g.group).map((i) => entries.get(`q:${i.quest.id}`)!),
+    entries: candidates.filter((i) => planGroup(i, ahead) === g.group).map((i) => entries.get(`q:${i.quest.id}`)!),
   }))
   const looseEnds = {
     id: 'loose',
@@ -92,7 +127,7 @@ function Sheet({ todayKey, items, tasks, plan, onClose }: Props) {
   function add(entry: Entry) {
     if (full) return
     const latest = byTime(picks).at(-1)?.time
-    setPicks(byTime([...picks, { key: entry.key, time: suggestTime(entry.dueTime, latest, now), ifThen: '' }]))
+    setPicks(byTime([...picks, { key: entry.key, time: suggestTime(entry.dueTime, latest, planClock(now, day)), ifThen: '' }]))
   }
 
   function remove(key: string) {
@@ -106,13 +141,18 @@ function Sheet({ todayKey, items, tasks, plan, onClose }: Props) {
   async function save(e?: FormEvent) {
     e?.preventDefault()
     if (saving) return
-    if (picks.some((p) => !isValidTime(p.time))) return toast.show('Give each planned quest a start time.')
+    // The day on screen always saves (an empty plan is a plan: "nothing needs a time"); the other only if it changed.
+    const days = DAYS.filter((d) => d === day || changed(d))
+    if (days.some((d) => drafts[d].some((p) => !isValidTime(p.time)))) return toast.show('Give each planned quest a start time.')
     setSaving(true)
     const ok = await toast.run(async () => {
-      await planToday(
-        todayKey,
-        picks.map((p) => ({ ...entries.get(p.key)!.ref, time: p.time, ifThen: p.ifThen })),
-      )
+      for (const d of days) {
+        const map = entriesFor(d)
+        await planDay(
+          planDayKey(todayKey, d),
+          drafts[d].map((p) => ({ ...map.get(p.key)!.ref, time: p.time, ifThen: p.ifThen })),
+        )
+      }
       return true
     })
     setSaving(false)
@@ -166,13 +206,39 @@ function Sheet({ todayKey, items, tasks, plan, onClose }: Props) {
         <form onSubmit={save} className="flex min-h-0 flex-1 flex-col">
           <header className="flex items-start justify-between gap-3 px-5 pt-5 pb-4 sm:px-7 sm:pt-6">
             <div className="min-w-0">
-              <p className="text-[12.5px] font-semibold tracking-[0.04em] text-muted uppercase">{format(parseDayKey(todayKey), 'EEEE, MMMM d')}</p>
+              <p className="text-[12.5px] font-semibold tracking-[0.04em] text-muted uppercase">{format(parseDayKey(planDayKey(todayKey, day)), 'EEEE, MMMM d')}</p>
               <h2 id={titleId} className="mt-0.5 font-display text-[28px] leading-tight font-normal text-ink">
-                Plan today
+                {day === 'today' ? 'Plan today' : 'Plan tomorrow'}
               </h2>
               <p id={descId} className="mt-1.5 max-w-[46ch] text-[13.5px] leading-relaxed text-muted">
-                Pick up to {MAX_PLAN_SLOTS} things that matter most, quests or loose ends, and decide when you’ll start each one.
+                {day === 'today' && plan && isoToDayKey(plan.createdAt) < plan.dayKey
+                  ? 'You made this plan last night. Keep what still fits, move a time, or swap something out.'
+                  : day === 'today'
+                  ? `Pick up to ${MAX_PLAN_SLOTS} things that matter most, quests or loose ends, and decide when you’ll start each one.`
+                  : `Pick up to ${MAX_PLAN_SLOTS} things to look forward to tomorrow and decide when you’ll start each one. You can still change it in the morning.`}
               </p>
+              <div role="radiogroup" aria-label="Which day" className="mt-3 inline-flex rounded-full bg-sunken p-0.5">
+                {DAYS.map((d) => (
+                  <button
+                    key={d}
+                    type="button"
+                    role="radio"
+                    aria-checked={day === d}
+                    onClick={() => setDay(d)}
+                    className={`rounded-full px-3.5 py-1 text-[13px] font-medium transition outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+                      day === d ? 'bg-elevated text-ink shadow-card' : 'text-muted hover:text-ink'
+                    }`}
+                  >
+                    {d === 'today' ? 'Today' : 'Tomorrow'}
+                    {d !== day && changed(d) && (
+                      <>
+                        <span aria-hidden className="ml-1.5 inline-block size-1.5 rounded-full bg-ink align-middle" />
+                        <span className="sr-only"> (unsaved changes)</span>
+                      </>
+                    )}
+                  </button>
+                ))}
+              </div>
             </div>
             <button
               ref={closeBtn}
@@ -277,7 +343,9 @@ function Sheet({ todayKey, items, tasks, plan, onClose }: Props) {
             <div className="px-3 pt-5 pb-4 sm:px-5">
               {groups.length === 0 ? (
                 <p className="px-2.5 py-4 text-center text-[13.5px] text-muted">
-                  {picks.length ? 'That’s everything open.' : 'Nothing open to plan. Add a quest or a loose end first, or enjoy a free day.'}
+                  {picks.length
+                    ? 'That’s everything open.'
+                    : `Nothing open to plan. Add a quest or a loose end first, or enjoy a free day${day === 'tomorrow' ? ' tomorrow' : ''}.`}
                 </p>
               ) : (
                 <div className="flex flex-col gap-4">
@@ -325,7 +393,11 @@ function Sheet({ todayKey, items, tasks, plan, onClose }: Props) {
           </div>
 
           <footer className="flex items-center gap-2 border-t border-line bg-surface/60 px-5 py-3.5 pb-[max(0.875rem,env(safe-area-inset-bottom))] sm:px-7">
-            {plan && !plan.skipped ? (
+            {day === 'tomorrow' ? (
+              <span className="mr-auto hidden text-[12.5px] text-muted sm:inline">
+                {plan ? 'Changing the plan is part of planning.' : 'Sleep on it. It’ll be here in the morning.'}
+              </span>
+            ) : plan && !plan.skipped ? (
               <span className="mr-auto hidden text-[12.5px] text-muted sm:inline">Changing the plan is part of planning.</span>
             ) : (
               <button
@@ -357,18 +429,18 @@ function Sheet({ todayKey, items, tasks, plan, onClose }: Props) {
   )
 }
 
-function questEntry(item: QuestItem, todayKey: string): Entry {
+function questEntry(item: QuestItem, todayKey: string, day: PlanDay): Entry {
   const q = item.quest
   const meta = CATEGORY[q.category]
   const due = q.dueDate ? formatDayInline(q.dueDate, todayKey) : ''
-  const kind = planKind(item)
+  const kind = planKind(item, day === 'tomorrow' ? planDayKey(todayKey, 'tomorrow') : undefined)
   const [sub, note] =
     kind === 'project'
       ? ['a work session on its board', 'Project: a work session on its board']
       : kind === 'moved'
-        ? [`due ${due}`, `Moves to today (was due ${due})`]
+        ? [`due ${due}`, `Moves to ${day} (was due ${due})`]
         : kind === 'redo'
-          ? [`was due ${due}`, `Missed ${due}: saving redoes it today`]
+          ? [`was due ${due}`, `Missed ${due}: saving redoes it ${day}`]
           : ['', '']
   return {
     key: `q:${q.id}`,
