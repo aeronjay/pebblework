@@ -4,7 +4,7 @@ import { isDueToday } from './lists'
 
 // Today at a glance: one sentence and one segment per quest the day asks for (finished ones take their stone's color).
 // Same basis as the section counts: quests due today plus anything finished today.
-export function DayProgress({ today }: { today: QuestToday }) {
+export function DayProgress({ today, autoClaim = false }: { today: QuestToday; autoClaim?: boolean }) {
   const day = today.items
     .filter(isDueToday)
     .sort((a, b) => Number(b.done) - Number(a.done) || CATEGORY_ORDER.indexOf(a.quest.category) - CATEGORY_ORDER.indexOf(b.quest.category))
@@ -13,7 +13,10 @@ export function DayProgress({ today }: { today: QuestToday }) {
 
   let lead: string
   let rest = ''
-  if (today.status === 'claimed') {
+  if (today.status === 'claimed' && autoClaim && total > 0) {
+    lead = done === total ? `All ${total} done.` : `${done} of ${total} done today.`
+    rest = done === total ? 'Their stones are in your jar.' : total - done === 1 ? 'One to go.' : `${total - done} to go.`
+  } else if (today.status === 'claimed') {
     lead = 'Today is claimed.'
     rest = 'Its stones are in your jar.'
   } else if (total === 0) {
@@ -21,7 +24,7 @@ export function DayProgress({ today }: { today: QuestToday }) {
     rest = 'A good day for a side quest.'
   } else if (done === total) {
     lead = `All ${total} done.`
-    rest = 'Claim today on the calendar to drop its stones.'
+    rest = autoClaim ? 'Its stones are on their way to your jar.' : 'Claim today on the calendar to drop its stones.'
   } else {
     lead = `${done} of ${total} done today.`
     rest = total - done === 1 ? 'One to go.' : `${total - done} to go.`

@@ -1,4 +1,5 @@
 import { format } from 'date-fns'
+import { downloadPlanIcs } from '../reminders/ics'
 import { CornerDownRight, Plus, X } from 'lucide-react'
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
 import { useId, useRef, useState, type FormEvent, type ReactNode } from 'react'
@@ -156,7 +157,15 @@ function Sheet({ todayKey, items, tasks, plans, day: initialDay, onClose }: Prop
       return true
     })
     setSaving(false)
-    if (ok) onClose()
+    if (!ok) return
+    onClose()
+    // Alarms inside the app only ring while it's open; the calendar's ring regardless.
+    const map = entriesFor(day)
+    const events = drafts[day].flatMap((p) => (map.has(p.key) ? [{ key: p.key, time: p.time, title: map.get(p.key)!.title, ifThen: p.ifThen.trim() || undefined }] : []))
+    if (events.length) {
+      const key = planDayKey(todayKey, day)
+      toast.show(`Planned. Pebblework will ring at ${events.length === 1 ? 'that time' : 'each time'} while it’s open.`, 'info', { label: 'Add to calendar', onClick: () => downloadPlanIcs(key, events) })
+    }
   }
 
   async function notToday() {

@@ -2,6 +2,8 @@ import { StickyNote } from 'lucide-react'
 import { motion } from 'motion/react'
 import type { CSSProperties, ReactNode } from 'react'
 import { db } from '../../../db/db'
+import { useGoalOf } from '../../identity/goalContext'
+import { isOutcome } from '../../identity/repo'
 import { requestClaim } from '../claimBus'
 import { completeQuest, doItToday, uncompleteQuest } from '../repo'
 import type { QuestItem } from '../hooks'
@@ -14,6 +16,7 @@ import { PlanLine, type RowPlan } from './PlanLine'
 import { QuestCheck, type CheckState } from './QuestCheck'
 import { RowActions } from './RowActions'
 import { useToast } from './toastContext'
+import { useAutoClaimSetting } from '../useAutoClaim'
 
 // Drag-and-drop wiring for a row in the open list (absent in the "earlier" tail).
 export interface RowDrag {
@@ -56,6 +59,8 @@ export function QuestRow({ item, todayKey, claimed, drag, onEdit, onMove, canMov
   const toast = useToast()
   const feedback = useCompleteFeedback()
   const openToday = useOpenToday()
+  const autoClaim = useAutoClaimSetting()
+  const goal = useGoalOf(quest.identityId)
   const { state, reason } = checkState(item, todayKey, claimed)
   const muted = state === 'missed' || state === 'locked' || state === 'doneFixed'
   const struck = item.done
@@ -78,8 +83,8 @@ export function QuestRow({ item, todayKey, claimed, drag, onEdit, onMove, canMov
   // was the last thing today asked for, offer the claim right here instead of making the user find the calendar.
   async function celebrate(last: boolean) {
     const identity = quest.identityId ? await db.identities.get(quest.identityId) : undefined
-    const vote = identity && !identity.deletedAt ? `+1 vote for: ${identity.statement}.` : ''
-    if (last) toast.show(`${vote ? `${vote} ` : ''}That’s everything for today.`, 'info', { label: 'Claim stones', onClick: () => void requestClaim() })
+    const vote = identity && !identity.deletedAt ? (isOutcome(identity) ? `One step closer: ${identity.statement}.` : `+1 vote for: ${identity.statement}.`) : ''
+    if (last) toast.show(`${vote ? `${vote} ` : ''}That’s everything for today.`, 'info', autoClaim ? undefined : { label: 'Claim stones', onClick: () => void requestClaim() })
     else if (vote) toast.show(vote, 'info')
   }
 
@@ -108,7 +113,7 @@ export function QuestRow({ item, todayKey, claimed, drag, onEdit, onMove, canMov
           >
             {quest.title}
           </p>
-          {(caption || showCategory) && (
+          {(caption || showCategory || goal) && (
             <p className="mt-0.5 truncate text-[13px] leading-5 text-muted">
               {showCategory && (
                 <span className="font-medium" style={{ color: CATEGORY[quest.category].ink }}>
@@ -118,6 +123,11 @@ export function QuestRow({ item, todayKey, claimed, drag, onEdit, onMove, canMov
               )}
               {/* Day names keep their capital ("Daily Quest, Mon, Wed, Fri"). */}
               {showCategory && caption && !/^(Mon|Tue|Wed|Thu|Fri|Sat|Sun)\b/.test(caption) ? caption.charAt(0).toLowerCase() + caption.slice(1) : caption}
+              {goal && (
+                <span>
+                  {(caption || showCategory) && ' · '}for <span className="font-medium text-ink/80">{goal.statement}</span>
+                </span>
+              )}
             </p>
           )}
           {plan && <PlanLine plan={plan} title={quest.title} done={item.done} />}

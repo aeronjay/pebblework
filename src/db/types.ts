@@ -140,6 +140,17 @@ export interface Settings {
   backupSnoozedUntil?: string // ISO; the Home backup reminder stays quiet until then
   inProgressOrder?: string[] // card ids in the user's order for Home's In progress strip; unset = automatic
   looseEndOrder?: string[] // task ids in the user's order for Home's Loose ends; unset = by deadline
+  autoClaim?: boolean // stones drop by themselves a few seconds after something is finished; unset = on
+  reminders?: ReminderSettings // unset = off
+  planAlarm?: boolean // ring and show an alarm at each planned start time while the app is open; unset = on
+}
+
+// Nudges to open the app. Notifications only fire while Pebblework is open somewhere (a tab or the installed app):
+// there's no server to push from. The calendar file (see reminders/ics.ts) covers the times it's closed.
+export interface ReminderSettings {
+  enabled: boolean
+  morning: string // "HH:mm": what today asks for
+  evening: string // "HH:mm": what's still open, or plan tomorrow
 }
 
 export type QuestCategory = 'dq' | 'mq' | 'sq'
@@ -256,12 +267,19 @@ export interface Note extends Meta {
   questId?: string
 }
 
-// "Who I'm becoming": an identity statement that quests and projects can be linked to (Quest.identityId).
+// A goal that quests and projects can be linked to (Quest.identityId). Two kinds share the table:
+// - identity (kind unset): "who I'm becoming", ongoing, e.g. "someone who moves every day"
+// - outcome: something with a finish line, e.g. "Pass the board exam", with an optional target day
+export type GoalKind = 'outcome'
+
 export interface Identity extends Meta {
   id: string
-  statement: string // e.g. "someone who moves every day"
+  statement: string // the identity statement, or the outcome's name
   why?: string
   order: number
+  kind?: GoalKind // unset = identity
+  targetDate?: string // dayKey; outcomes only
+  achievedAt?: string // ISO; outcomes only. An achieved goal leaves Home but keeps its history.
 }
 
 export type FocusRating = 1 | 2 | 3 | 4 | 5

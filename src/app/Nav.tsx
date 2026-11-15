@@ -27,17 +27,17 @@ const TABS: Tab[] = [
   { label: 'Home', to: href.home, match: ['home'], Icon: HomeIcon },
   { label: 'Focus', to: href.focus, match: ['focus'], Icon: FocusIcon },
   { label: 'Projects', to: href.projects, match: ['projects', 'board'], Icon: ProjectsIcon },
+  { label: 'Goals', to: href.identity, match: ['identity'], Icon: IdentityIcon },
   { label: 'Notes', to: href.notes, match: ['notes'], Icon: NotesIcon },
   { label: 'Review', to: href.review, match: ['review'], Icon: ReviewIcon },
   { label: 'Shelf', to: href.shelf, match: ['shelf'], Icon: ShelfIcon },
   { label: 'Insights', to: href.insights, match: ['insights'], Icon: InsightsIcon },
-  { label: 'Identity', to: href.identity, match: ['identity'], Icon: IdentityIcon },
   // Keep Settings last: the rail pins it to the bottom.
   { label: 'Settings', to: href.settings, match: ['settings'], Icon: SettingsIcon },
 ]
 
 // Phones fit four tabs plus "More"; the rest live in the More sheet.
-const PHONE_TABS = ['Home', 'Focus', 'Projects', 'Notes']
+const PHONE_TABS = ['Home', 'Focus', 'Projects', 'Goals']
 const PHONE_PRIMARY = TABS.filter((t) => PHONE_TABS.includes(t.label))
 const PHONE_MORE = TABS.filter((t) => !PHONE_TABS.includes(t.label))
 

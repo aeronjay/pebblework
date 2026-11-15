@@ -1,20 +1,25 @@
-import { formatDistanceStrict } from 'date-fns'
-import { ArrowDown, ArrowUp, Check, Link2, Pencil, Plus, Sprout, Trash2, X } from 'lucide-react'
+import { format, formatDistanceStrict } from 'date-fns'
+import { ArrowDown, ArrowUp, Check, CircleCheck, Flag, Link2, Pencil, Plus, RotateCcw, Sprout, Trash2, X } from 'lucide-react'
 import { AnimatePresence, motion } from 'motion/react'
 import { useEffect, useEffectEvent, useId, useMemo, useRef, useState, type FormEvent } from 'react'
 import { ProjectsIcon } from '../app/icons/NavIcons'
 import { useToday } from '../app/useToday'
 import type { Quest } from '../db/types'
 import { Menu } from '../features/board/components/Menu'
+import { WeekDots } from '../features/identity/GoalsStrip'
 import { useIdentityViews } from '../features/identity/hooks'
 import {
   STATEMENT_MAX,
   VOTE_WINDOW_DAYS,
+  createGoal,
   createIdentity,
   deleteIdentity,
+  goalStanding,
+  isOutcome,
   linkQuest,
   moveIdentity,
   restoreIdentity,
+  setAchieved,
   updateIdentity,
   type IdentityView,
 } from '../features/identity/repo'
@@ -27,7 +32,12 @@ import { ui } from '../ui/styles'
 
 const UNDO_MS = 6000
 
-const EXAMPLES = ['someone who moves every day', 'a person who finishes what they start', 'a calm, curious learner']
+type Kind = 'outcome' | 'identity'
+
+const EXAMPLES: Record<Kind, string[]> = {
+  outcome: ['Pass the licensure exam', 'Ship my portfolio site', 'Run a 10K without stopping'],
+  identity: ['someone who moves every day', 'a person who finishes what they start', 'a calm, curious learner'],
+}
 
 export function IdentityScreen() {
   const views = useIdentityViews()
@@ -71,14 +81,16 @@ export function IdentityScreen() {
     <div className="flex flex-col">
       <header className="mb-6 flex flex-wrap items-end justify-between gap-x-6 gap-y-4 md:mb-8">
         <div className="min-w-0">
-          <p className="text-[15px] font-semibold text-muted">Identity</p>
-          <h1 className="mt-1.5 font-display text-[34px] leading-[1.05] font-normal tracking-[-0.025em] text-ink md:text-[42px]">Who I’m becoming</h1>
-          <p className="mt-2 max-w-[52ch] text-[14px] text-muted">Every quest you finish is a vote for the person you’re becoming. Link quests to the person they build.</p>
+          <p className="text-[15px] font-semibold text-muted">Goals</p>
+          <h1 className="mt-1.5 font-display text-[34px] leading-[1.05] font-normal tracking-[-0.025em] text-ink md:text-[42px]">What it’s all for</h1>
+          <p className="mt-2 max-w-[56ch] text-[14px] text-muted">
+            The things you want to reach and the person you’re becoming. Link quests and projects to them, and Home shows which goals your days are actually moving.
+          </p>
         </div>
         {count > 0 && !adding && (
           <button type="button" onClick={() => setAdding(true)} aria-keyshortcuts="N" className={ui.cta}>
             <Plus aria-hidden className="size-4" strokeWidth={2} />
-            New statement
+            New goal
             <kbd className={ui.ctaKbd}>N</kbd>
           </button>
         )}
@@ -90,9 +102,11 @@ export function IdentityScreen() {
         <div className="flex flex-col gap-4">
           {adding && (
             <StatementForm
-              submitLabel="Add statement"
-              onSubmit={async (statement, why) => {
-                await createIdentity(statement, why)
+              submitLabel="Add goal"
+              chooseKind
+              onSubmit={async ({ kind, statement, why, targetDate }) => {
+                if (kind === 'outcome') await createGoal({ title: statement, why, targetDate })
+                else await createIdentity(statement, why)
                 setAdding(false)
               }}
               onCancel={() => setAdding(false)}
@@ -170,41 +184,67 @@ function IdentityCard({ view, quests, done, names, first, last, onDelete }: Card
   const [editing, setEditing] = useState(false)
   const [linking, setLinking] = useState(false)
   const headingId = useId()
+  const outcome = isOutcome(identity)
+  const reached = !!identity.achievedAt
+  const Icon = reached ? CircleCheck : outcome ? Flag : Sprout
+  const unit = outcome ? 'step' : 'vote'
+  const standing = goalStanding(view)
 
   const voteLine =
     totalVotes === 0
-      ? 'No votes yet. Link a quest, and finishing it casts the first one.'
-      : `${votes} ${votes === 1 ? 'vote' : 'votes'} in the last ${VOTE_WINDOW_DAYS} days · ${totalVotes} in all${
+      ? outcome
+        ? 'No steps yet. Link a quest or project, and finishing it is the first one.'
+        : 'No votes yet. Link a quest, and finishing it casts the first one.'
+      : `${votes} ${votes === 1 ? unit : `${unit}s`} in the last ${VOTE_WINDOW_DAYS} days · ${totalVotes} in all${
           lastVote ? ` · last ${lastVoteLabel(lastVote, today)}` : ''
+        }`
+  const targetLine = !identity.targetDate
+    ? undefined
+    : reached
+      ? undefined
+      : `By ${format(parseDayKey(identity.targetDate), 'MMMM d, yyyy')}${
+          view.daysLeft === undefined ? '' : view.daysLeft < 0 ? ' · that day has passed' : view.daysLeft === 0 ? ' · today' : ` · ${view.daysLeft} ${view.daysLeft === 1 ? 'day' : 'days'} left`
         }`
 
   return (
-    <article aria-labelledby={headingId} className="rounded-card border border-line bg-surface">
+    <article aria-labelledby={headingId} className={`rounded-card border border-line bg-surface ${reached ? 'opacity-80' : ''}`}>
       <div className="flex items-start gap-3 p-5 pb-4">
         <span aria-hidden className="mt-1 grid size-9 shrink-0 place-items-center rounded-[10px] bg-sunken text-muted">
-          <Sprout className="size-[18px]" strokeWidth={1.75} />
+          <Icon className="size-[18px]" strokeWidth={1.75} />
         </span>
         <div className="min-w-0 flex-1">
           {editing ? (
             <StatementForm
+              kind={outcome ? 'outcome' : 'identity'}
               initial={identity.statement}
               initialWhy={identity.why ?? ''}
+              initialTarget={identity.targetDate ?? ''}
               submitLabel="Save"
               bare
-              onSubmit={async (statement, why) => {
-                await updateIdentity(identity.id, { statement, why })
+              onSubmit={async ({ statement, why, targetDate }) => {
+                await updateIdentity(identity.id, { statement, why, targetDate: targetDate || null })
                 setEditing(false)
               }}
               onCancel={() => setEditing(false)}
             />
           ) : (
             <>
-              <p className="text-[12.5px] font-semibold text-faint">I’m becoming</p>
+              <p className="text-[12.5px] font-semibold text-faint">
+                {reached ? `Reached ${format(new Date(identity.achievedAt!), 'MMMM d, yyyy')}` : outcome ? 'I want to' : 'I’m becoming'}
+              </p>
               <h2 id={headingId} className="mt-0.5 font-display text-[22px] leading-[1.2] font-normal text-pretty text-ink md:text-[24px]">
                 {identity.statement}
               </h2>
               {identity.why && <p className="mt-1.5 text-[14px] leading-relaxed text-muted">{identity.why}</p>}
-              <p className="mt-2.5 text-[12.5px] text-faint tabular-nums">{voteLine}</p>
+              {targetLine && <p className="mt-1.5 text-[13.5px] font-medium text-ink tabular-nums">{targetLine}</p>}
+              {!reached && (
+                <p className="mt-2.5 flex flex-wrap items-center gap-x-2.5 gap-y-1 text-[12.5px] text-muted">
+                  <WeekDots week={view.week} />
+                  <span>Last 7 days</span>
+                  {standing.tone === 'quiet' && <span className="font-medium text-blaze-ink">{standing.text}</span>}
+                </p>
+              )}
+              <p className="mt-1.5 text-[12.5px] text-faint tabular-nums">{voteLine}</p>
             </>
           )}
         </div>
@@ -213,6 +253,13 @@ function IdentityCard({ view, quests, done, names, first, last, onDelete }: Card
             label={`Actions for “${identity.statement}”`}
             items={[
               { label: 'Edit', Icon: Pencil, onSelect: () => setEditing(true) },
+              ...(outcome
+                ? [
+                    reached
+                      ? { label: 'Reopen', Icon: RotateCcw, onSelect: () => void setAchieved(identity.id, false) }
+                      : { label: 'Mark as reached', Icon: CircleCheck, onSelect: () => void setAchieved(identity.id, true), hint: 'It leaves Home and keeps its history.' },
+                  ]
+                : []),
               { label: 'Move up', Icon: ArrowUp, onSelect: () => void moveIdentity(identity.id, -1), disabled: first },
               { label: 'Move down', Icon: ArrowDown, onSelect: () => void moveIdentity(identity.id, 1), disabled: last },
               { label: 'Remove', Icon: Trash2, onSelect: onDelete, danger: true, separator: true, hint: 'Linked quests stay; they just lose the link.' },
@@ -224,7 +271,7 @@ function IdentityCard({ view, quests, done, names, first, last, onDelete }: Card
       <div className="border-t border-line px-5 py-4">
         <div className="flex items-center justify-between gap-3">
           <h3 className="text-[13px] font-semibold text-muted">
-            {view.quests.length ? `Votes come from ${view.quests.length} ${view.quests.length === 1 ? 'quest' : 'quests'}` : 'No quests linked yet'}
+            {view.quests.length ? `${outcome ? 'Moved forward by' : 'Votes come from'} ${view.quests.length} ${view.quests.length === 1 ? 'quest' : 'quests'}` : 'No quests linked yet'}
           </h3>
           <button
             type="button"
@@ -335,18 +382,37 @@ function QuestPicker({ identityId, quests: all, done, names }: { identityId: str
   )
 }
 
+interface FormValue {
+  kind: Kind
+  statement: string
+  why: string
+  targetDate: string // '' = none; outcomes only
+}
+
 interface FormProps {
+  kind?: Kind // fixed when editing
+  chooseKind?: boolean // creating: offer both kinds
   initial?: string
   initialWhy?: string
+  initialTarget?: string
   submitLabel: string
   bare?: boolean // inside a card already
-  onSubmit: (statement: string, why: string) => Promise<void>
+  onSubmit: (value: FormValue) => Promise<void>
   onCancel: () => void
 }
 
-function StatementForm({ initial = '', initialWhy = '', submitLabel, bare = false, onSubmit, onCancel }: FormProps) {
+const KINDS: { value: Kind; label: string; hint: string }[] = [
+  { value: 'outcome', label: 'Something to reach', hint: 'Has a finish line: an exam, a launch, a number.' },
+  { value: 'identity', label: 'Someone to become', hint: 'Ongoing: the kind of person who does this.' },
+]
+
+function StatementForm({ kind: fixedKind, chooseKind = false, initial = '', initialWhy = '', initialTarget = '', submitLabel, bare = false, onSubmit, onCancel }: FormProps) {
+  const today = useToday()
+  const [kind, setKind] = useState<Kind>(fixedKind ?? 'outcome')
   const [statement, setStatement] = useState(initial)
   const [why, setWhy] = useState(initialWhy)
+  const [targetDate, setTargetDate] = useState(initialTarget)
+  const outcome = kind === 'outcome'
   const [error, setError] = useState<string | null>(null)
   const input = useRef<HTMLInputElement>(null)
   const id = useId()
@@ -356,7 +422,7 @@ function StatementForm({ initial = '', initialWhy = '', submitLabel, bare = fals
   async function submit(e: FormEvent) {
     e.preventDefault()
     try {
-      await onSubmit(statement, why)
+      await onSubmit({ kind, statement, why, targetDate: outcome ? targetDate : '' })
     } catch (err) {
       setError(err instanceof QuestError ? err.message : 'Could not save that.')
     }
@@ -373,9 +439,33 @@ function StatementForm({ initial = '', initialWhy = '', submitLabel, bare = fals
       }}
       className={bare ? 'flex flex-col gap-3' : 'flex flex-col gap-3 rounded-card border border-line-strong bg-surface p-5'}
     >
+      {chooseKind && (
+        <div role="radiogroup" aria-label="Kind of goal" className="grid gap-2 sm:grid-cols-2">
+          {KINDS.map((k) => {
+            const on = kind === k.value
+            return (
+              <button
+                key={k.value}
+                type="button"
+                role="radio"
+                aria-checked={on}
+                onClick={() => {
+                  setKind(k.value)
+                  setError(null)
+                  input.current?.focus()
+                }}
+                className={`rounded-control border px-3.5 py-2.5 text-left transition-colors outline-none focus-visible:ring-2 focus-visible:ring-ring ${on ? 'border-ring bg-sunken/60' : 'border-line hover:bg-sunken/40'}`}
+              >
+                <span className="block text-[14px] font-semibold text-ink">{k.label}</span>
+                <span className="block text-[12.5px] text-muted">{k.hint}</span>
+              </button>
+            )
+          })}
+        </div>
+      )}
       <div>
         <label htmlFor={`${id}-s`} className="mb-1.5 block text-[13px] font-semibold text-muted">
-          I’m becoming…
+          {outcome ? 'I want to…' : 'I’m becoming…'}
         </label>
         <input
           ref={input}
@@ -386,7 +476,7 @@ function StatementForm({ initial = '', initialWhy = '', submitLabel, bare = fals
             setError(null)
           }}
           maxLength={STATEMENT_MAX}
-          placeholder={EXAMPLES[0]}
+          placeholder={EXAMPLES[kind][0]}
           aria-invalid={!!error}
           aria-describedby={error ? `${id}-err` : `${id}-ex`}
           className={`${ui.input} font-display text-[18px]`}
@@ -397,7 +487,7 @@ function StatementForm({ initial = '', initialWhy = '', submitLabel, bare = fals
           </p>
         ) : (
           <p id={`${id}-ex`} className="mt-1 text-[12.5px] text-faint">
-            Try: {EXAMPLES.slice(1).map((x) => `“${x}”`).join(' or ')}.
+            Try: {EXAMPLES[kind].slice(1).map((x) => `“${x}”`).join(' or ')}.
           </p>
         )}
       </div>
@@ -405,8 +495,37 @@ function StatementForm({ initial = '', initialWhy = '', submitLabel, bare = fals
         <label htmlFor={`${id}-w`} className="mb-1.5 block text-[13px] font-semibold text-muted">
           Why it matters <span className="font-normal text-faint">(optional)</span>
         </label>
-        <input id={`${id}-w`} value={why} onChange={(e) => setWhy(e.target.value)} maxLength={240} className={`${ui.input} text-[15px]`} />
+        <input
+          id={`${id}-w`}
+          value={why}
+          onChange={(e) => setWhy(e.target.value)}
+          maxLength={240}
+          placeholder="Home shows this next to the work, on the days it’s hard to start."
+          className={`${ui.input} text-[15px]`}
+        />
       </div>
+      {outcome && (
+        <div>
+          <label htmlFor={`${id}-d`} className="mb-1.5 block text-[13px] font-semibold text-muted">
+            By when <span className="font-normal text-faint">(optional)</span>
+          </label>
+          <div className="flex items-center gap-2">
+            <input
+              id={`${id}-d`}
+              type="date"
+              min={format(today, 'yyyy-MM-dd')}
+              value={targetDate}
+              onChange={(e) => setTargetDate(e.target.value)}
+              className={`${ui.input} w-auto text-[15px] tabular-nums`}
+            />
+            {targetDate && (
+              <button type="button" onClick={() => setTargetDate('')} className="rounded-lg px-2 py-1.5 text-[12.5px] font-medium text-faint transition hover:bg-sunken hover:text-ink outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                Clear
+              </button>
+            )}
+          </div>
+        </div>
+      )}
       <div className="flex justify-end gap-2">
         <button type="button" onClick={onCancel} className={`${ui.btn} ${ui.secondary} text-[14px]`}>
           Cancel
@@ -423,13 +542,13 @@ function Empty({ onCreate }: { onCreate: () => void }) {
   return (
     <section className="flex flex-col items-center rounded-card border border-dashed border-line-strong px-6 py-14 text-center md:py-16">
       <Sprout aria-hidden className="size-8 text-faint" strokeWidth={1.5} />
-      <h2 className="mt-4 font-display text-[24px] leading-tight font-normal text-ink">Who are you becoming?</h2>
-      <p className="mt-2 max-w-[40ch] text-[15px] leading-relaxed text-muted">
-        Goals say what you want. An identity says who does that kind of thing. Write one, then link the quests that build it.
+      <h2 className="mt-4 font-display text-[24px] leading-tight font-normal text-ink">What are your days for?</h2>
+      <p className="mt-2 max-w-[44ch] text-[15px] leading-relaxed text-muted">
+        Quests are the daily work. A goal is what the work adds up to: something to reach, or someone to become. Write one, then link the quests that move it.
       </p>
       <button type="button" onClick={onCreate} className={`${ui.cta} mt-6`}>
         <Plus aria-hidden className="size-4" strokeWidth={2} />
-        Write your first statement
+        Add your first goal
       </button>
     </section>
   )

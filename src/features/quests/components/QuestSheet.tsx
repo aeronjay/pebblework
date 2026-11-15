@@ -1,9 +1,11 @@
 import { Lock, Repeat, Trash2, X } from 'lucide-react'
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
+import { useLiveQuery } from 'dexie-react-hooks'
 import { useEffect, useId, useRef, useState, type FormEvent, type KeyboardEvent } from 'react'
 import type { QuestCategory } from '../../../db/types'
 import { ProjectsIcon } from '../../../app/icons/NavIcons'
 import { href, navigate } from '../../../app/router'
+import { isOutcome, listIdentities } from '../../identity/repo'
 import { EVERY_DAY, addDaysToKey, isEveryDay, isProject, normalizeDays, scheduleOn } from '../day'
 import { useQuests, type QuestItem } from '../hooks'
 import { CATEGORY, CATEGORY_ORDER } from '../meta'
@@ -54,6 +56,8 @@ function Sheet({ target, todayKey, onClose }: { target: SheetTarget; todayKey: s
   const [dueDate, setDueDate] = useState(q?.dueDate ?? '')
   const [dueTime, setDueTime] = useState(q?.dueTime ?? '')
   const [note, setNote] = useState(q?.note ?? '')
+  const goals = useLiveQuery(() => listIdentities())?.filter((g) => !g.achievedAt || g.id === q?.identityId)
+  const [goalId, setGoalId] = useState(q?.identityId ?? '')
   // The schedule as of today (or the start day, for one that hasn't started).
   const scheduleFrom = q && q.startDate > todayKey ? q.startDate : todayKey
   const [days, setDays] = useState<number[]>(q ? scheduleOn(q, scheduleFrom) : EVERY_DAY)
@@ -134,6 +138,7 @@ function Sheet({ target, todayKey, onClose }: { target: SheetTarget; todayKey: s
           dueTime: asProject ? undefined : dueTime || undefined,
           note: note || undefined,
           isProject: asProject || undefined,
+          identityId: goalId || undefined,
         })
         // A new project opens straight onto its board, ready for its first stages.
         if (asProject) navigate(href.board(id))
@@ -143,6 +148,7 @@ function Sheet({ target, todayKey, onClose }: { target: SheetTarget; todayKey: s
           title,
           note: note.trim() ? note : null,
           dueTime: dueTime || null,
+          ...(goalId !== (q.identityId ?? '') ? { identityId: goalId || null } : {}),
           ...(dateChanged ? { dueDate: dueDate || null } : {}),
           ...(isDQ && days.join() !== scheduleOn(q, scheduleFrom).join() ? { days } : {}),
         })
@@ -338,6 +344,23 @@ function Sheet({ target, todayKey, onClose }: { target: SheetTarget; todayKey: s
                 )}
               </div>
             </div>
+            )}
+
+            {!!goals?.length && (
+              <div>
+                <label className={labelCls} htmlFor={`${titleId}-goal`}>
+                  What it’s for <span className="font-normal tracking-normal text-faint normal-case">(optional)</span>
+                </label>
+                <select id={`${titleId}-goal`} value={goals.some((g) => g.id === goalId) ? goalId : ''} onChange={(e) => setGoalId(e.target.value)} className={field}>
+                  <option value="">No goal</option>
+                  {goals.map((g) => (
+                    <option key={g.id} value={g.id}>
+                      {isOutcome(g) ? g.statement : `Becoming ${g.statement}`}
+                    </option>
+                  ))}
+                </select>
+                <p className="mt-1.5 text-[12px] text-muted">Finishing this counts toward that goal, and Home shows which goals are getting attention.</p>
+              </div>
             )}
 
             <div>

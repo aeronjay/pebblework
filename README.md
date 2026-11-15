@@ -22,9 +22,11 @@ When the jar fills, it gets sealed and goes on your shelf, so you keep a record 
 The rest of the app follows a few rules:
 
 - **Small, visible wins.** Progress is physical and immediate, not a number buried in a report.
-- **Honest but forgiving.** You can only complete a quest on the day it's due, but you can claim earned days whenever you next open the app. One click catches up a whole week.
+- **One next thing.** Home opens on a single suggestion and a five-minute way to start it, so the day never begins with choosing from lists.
+- **Work that adds up.** Quests link to goals, and Home shows which goals the last week actually moved, and which have gone quiet.
+- **Honest but forgiving.** You can only complete a quest on the day it's due, but stones from earned days drop whenever you next open the app, however long it's been.
 - **No guilt.** Missed quests are labeled plainly and can be moved to today. Nothing turns red.
-- **Identity over output.** Link quests to the person you're trying to become. Each one you finish counts toward that.
+- **Rewards that arrive on time.** A stone lands a few seconds after the work that earned it, not after a trip to another screen.
 
 ## Screenshots
 
@@ -68,16 +70,19 @@ The rest of the app follows a few rules:
 
 | | |
 |---|---|
+| **Next up** | The first card on Home names one thing to do now: what you planned for this hour, then today's main, daily and side quests, then work already started on a board, then loose ends. **Start, 25 min** or **Just 5 min** opens a focus session on it; **Not now** moves to the next candidate without rescheduling anything. If it's linked to a goal, the card says which, and why you wrote it mattered. |
+| **Goals** | Two kinds: something to reach ("Ship my portfolio site", with an optional target day) and someone to become ("someone who moves every day"). Link quests and projects to them when you create one or from the Goals tab. Home shows each goal's last seven days, days left, and a plain note when one has been quiet for three days. Quest rows say what they're for. |
 | **Quests** | Three kinds, each with its own color and stone: **Daily** (rituals on the days you pick: every day, weekdays, or Mon/Wed/Fri), **Main** (the big moves), and **Side** (errands, if time allows). Press <kbd>N</kbd> anywhere on Home to add one. |
 | **Plan tomorrow / today** | From 6 PM, Home asks you to plan **tomorrow**: pick up to 3 quests or loose ends and give each a start time, with an optional "if it slips, I'll…" fallback, so the morning starts with something to look forward to. Once it's planned, a small Tomorrow card shows what's waiting. The next morning, Home shows that plan for a quick review (**Looks good** or **Edit**) before the day starts. If you didn't plan the night before, the morning asks about today instead. One sheet covers both days (a Today / Tomorrow switch). Planned quests lead the Today list by time, with a **Next up** marker and a one-tap **Move to…** once a time has passed. On a new week, a new month, or after a few quiet days, the prompt opens with a fresh start. Planning earns no stones; doing does. |
-| **Quest calendar** | A month grid that marks each day as pending, ready to claim, or claimed. One **Claim** button sweeps up every finished day at once. Heavier days drop more stones, like a GitHub contribution graph. |
+| **Quest calendar** | A month grid that marks each day as pending, ready, or claimed. Heavier days drop more stones, like a GitHub contribution graph. Stones drop on their own a few seconds after you finish something (you can untick it until then); switch that off in Settings to claim by hand with one **Claim** button instead. |
+| **Plan alarm** | When a start time in your plan arrives, Pebblework chimes three times and puts the task on screen over whatever you're looking at, with **Start, 25 min**, **Just 5 min** and **In 10 min**. Putting it off moves the slot in the plan, so it rings again at the new time instead of going quiet. It works while the app is open; **Add to calendar** (offered right after planning, and on the plan cards) exports the plan as calendar events with alarms for when it's closed. |
+| **Reminders** | Optional notifications in the morning, at each start time in your plan, and once in the evening. They only fire while Pebblework is open in a tab or installed, since there's no server to push from. For the days it's closed, Settings downloads a calendar file with two repeating daily reminders for your own calendar app. The installed app's icon also shows how many quests today still asks for. |
 | **The jar** | A physics-simulated jar (matter-js) where stones drop, bounce and settle. Its capacity scales with your quest load. Now and then a stone comes out golden. A jar that replaces a sealed one starts with 3 stones already in it. |
 | **Backup reminder** | When your last backup is a month old, Home suggests downloading one. "Later" snoozes it for two weeks. |
 | **Projects** | Break bigger goals into Kanban boards with draggable columns, cards and subtasks. Every stage you finish earns a stone. |
 | **Shelf** | Filled jars get sealed, labeled with their date range and kept, along with a breakdown by quest type. |
 | **Insights** | Current and longest runs (one missed day won't break a run; two in a row will), days you showed up, your strongest weekday, what you finish most, and the last 12 weeks. |
 | **Weekly review** | Three short prompts: what went well, what got in the way, and one tweak for next week. |
-| **Identity** | Write "who I'm becoming" statements and link quests to them. Finishing a linked quest shows "+1 vote for" that statement. |
 | **Notes** | Plans, thoughts and what got in the way, all in one place. |
 | **Loose ends** | Quick, one-off reminders on Home that stay outside the quest and reward loop. |
 | **Themes** | Light, dark, or follow the system. The jar canvas follows the theme too. |
@@ -154,7 +159,9 @@ src/
 │   ├── shelf/       # Filled jars
 │   ├── insights/    # Stats and charts
 │   ├── review/      # Weekly review
-│   ├── identity/    # "Who I'm becoming" statements
+│   ├── identity/    # Goals: outcomes to reach and "who I'm becoming" statements
+│   ├── next/        # Home's "Next up" card and the rules behind its pick
+│   ├── reminders/   # Notifications, the calendar file, the app badge
 │   ├── notes/       # Notes
 │   └── …
 ├── screens/      # One component per route

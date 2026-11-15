@@ -2,6 +2,8 @@ import { MotionConfig } from 'motion/react'
 import { BottomNav, SideNav } from './app/Nav'
 import { useRoute, type Route } from './app/router'
 import { useThemeSync } from './app/theme'
+import { PlanAlarm } from './features/alarm/PlanAlarm'
+import { Reminders } from './features/reminders/Reminders'
 import { BoardScreen } from './screens/BoardScreen'
 import { FocusScreen } from './screens/FocusScreen'
 import { HomeScreen } from './screens/HomeScreen'
@@ -67,6 +69,8 @@ function App() {
           <Screen route={route} />
         </main>
         <BottomNav route={route} />
+        <Reminders />
+        <PlanAlarm />
       </div>
     </MotionConfig>
   )

@@ -15,6 +15,7 @@ export interface QuestInput {
   startDate?: string // DQ only; today or later (default today)
   days?: number[] // DQ only; weekdays it runs (0 = Sunday). Omitted or all 7 = every day.
   isProject?: boolean // MQ/SQ only; creates the default board. dueDate becomes a display-only deadline.
+  identityId?: string // the goal this quest works toward
 }
 
 // `null` clears an optional field.
@@ -91,6 +92,7 @@ export async function createQuest(input: QuestInput, now: Date = new Date(), dat
       dueTime: input.dueTime || undefined,
       note: input.note?.trim() || undefined,
       isProject: input.isProject || undefined,
+      identityId: input.identityId || undefined,
       ...newMeta(now.toISOString()),
     }
     await database.quests.add(quest)

@@ -11,6 +11,7 @@ import type { QuestItem } from '../hooks'
 import { todayItems } from './lists'
 import type { ProjectSummary } from '../../board/hooks'
 import { isProject } from '../day'
+import { useAutoClaimSetting } from '../useAutoClaim'
 import { ProjectRow } from './ProjectRow'
 import { QuestRow, type RowPlan } from './QuestRow'
 import { useToast } from './toastContext'
@@ -35,6 +36,7 @@ export function TodayList({ items, todayKey, claimed, onAdd, onEdit, onBrowse, s
   const toast = useToast()
   const now = useNow()
   const tasks = useTasks()
+  const autoClaim = useAutoClaimSetting()
   // Planned quests (incl. undated ones and projects picked for today) lead, by start time; the rest keep their list order.
   const plannedIds = new Set(slots.flatMap((s) => (s.questId ? [s.questId] : [])))
   const base = todayItems(items)
@@ -92,7 +94,7 @@ export function TodayList({ items, todayKey, claimed, onAdd, onEdit, onBrowse, s
         <>
           {rows.length === 0 && (
             <p className="px-3 py-3 text-[13px] text-muted">
-              <span className="font-semibold text-ink">Everything for today is done.</span> Claim it on the calendar.
+              <span className="font-semibold text-ink">Everything for today is done.</span>{autoClaim ? '' : ' Claim it on the calendar.'}
             </p>
           )}
           <ul>

@@ -270,7 +270,7 @@ export function QuestCalendar() {
 
         {/* Footer */}
         <div className="mt-3">
-          <Legend hint="Claim finished days to drop their stones in the jar." />
+          <Legend hint={(settings?.autoClaim ?? true) ? 'Finished work drops its stones in the jar on its own.' : 'Claim finished days to drop their stones in the jar.'} />
           <div className="mt-2.5">
             <ClaimButton ref={buttonRef} days={claimable.days.length} weight={claimable.weight} busy={busy} onClaim={claim} />
             <AnimatePresence>

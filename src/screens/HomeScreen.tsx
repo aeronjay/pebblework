@@ -1,10 +1,15 @@
 import { format } from 'date-fns'
 import { CalendarClock, Plus } from 'lucide-react'
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useToday } from '../app/useToday'
 import { BackupNudge } from '../features/backup/BackupNudge'
 import { QuestCalendar } from '../features/calendar/QuestCalendar'
+import { useInProgress } from '../features/board/hooks'
 import { NowPanel } from '../features/focus/NowPanel'
+import { GoalsContext } from '../features/identity/goalContext'
+import { GoalsStrip } from '../features/identity/GoalsStrip'
+import { useIdentityViews } from '../features/identity/hooks'
+import { NextCard } from '../features/next/NextCard'
 import { useNotTonight, useNow, usePlan } from '../features/plan/hooks'
 import { freshStart, isEvening, isHandled, liveSlots, needsReview, planCandidates, planDayKey, taskCandidates, type PlanDay } from '../features/plan/model'
 import { PlanPreview, PlanPrompt, type PreviewLine } from '../features/plan/PlanPrompt'
@@ -19,6 +24,7 @@ import { QuestSheet, type SheetTarget } from '../features/quests/components/Ques
 import { ToastProvider } from '../features/quests/components/Toast'
 import { useToast } from '../features/quests/components/toastContext'
 import { useQuestToday } from '../features/quests/hooks'
+import { useAutoClaim, useAutoClaimSetting } from '../features/quests/useAutoClaim'
 import { ui } from '../ui/styles'
 
 export function HomeScreen() {
@@ -57,6 +63,11 @@ function Home() {
   const tasks = useTasks()
   const toast = useToast()
   const now = useNow()
+  const inProgress = useInProgress()
+  const goalViews = useIdentityViews()
+  const goals = useMemo(() => new Map((goalViews ?? []).map((v) => [v.identity.id, v.identity])), [goalViews])
+  const autoClaim = useAutoClaimSetting()
+  useAutoClaim(autoClaim)
   const slots = quests ? liveSlots(plan, quests.items, tasks) : []
   // Evenings are for tomorrow: plan it the night before so the day starts with something to look forward to. Daytime
   // (or a morning with no plan from last night) is for today. Either card asks once; after that the header button is
@@ -82,13 +93,14 @@ function Home() {
   const headerDay: PlanDay = evening ? 'tomorrow' : 'today'
   const headerPlanned = evening ? !!tomorrowLines?.length : slots.length > 0
 
-  // Two zones: the desk (what to do: today, in progress, the quest lists behind their Today / All / per-list tabs) and the stage (what you've earned: the jar and
-  // the calendar you claim from), on its own panel that follows the app theme.
+  // Two zones: the desk (what to do: the one next thing, the goals it's for, the quest lists behind their Today / All /
+  // per-list tabs, then started work and loose ends) and the stage (what you've earned: the jar and the calendar), on
+  // its own panel that follows the app theme.
   // `tall` (≥1024 wide and ≥700 high): a no-scroll app shell; the desk column scrolls on its own (the quest tabs stick
   // to its top) and the stage stays put. `lg` but short: the same two columns, with page scroll. Below lg both zones dissolve (display: contents) into one column ordered by `order-*`:
-  // today, in progress, jar, quests, calendar.
+  // today and the next thing, quests, jar, calendar.
   return (
-    <>
+    <GoalsContext.Provider value={goals}>
       <div className="flex flex-col gap-6 px-4 pt-6 pb-10 md:px-8 md:pt-8 lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(420px,40%)] lg:items-start lg:gap-0 lg:p-0 xl:grid-cols-[minmax(0,1fr)_minmax(480px,38%)] tall:h-dvh tall:items-stretch">
         <div className="contents lg:flex lg:min-w-0 lg:flex-col lg:gap-8 lg:pt-10 lg:pl-10 lg:pr-8 xl:pl-14 xl:pr-12 tall:min-h-0 tall:overflow-y-auto tall:pt-0 tall:[scrollbar-gutter:stable]">
           {/* In the tall shell the header carries the top padding: on the scroller itself it would open a gap above the stuck tabs. */}
@@ -123,10 +135,16 @@ function Home() {
                 </button>
               </div>
             </div>
-            <div className="mt-6 min-h-[46px]">{quests && <DayProgress today={quests} />}</div>
+            <div className="mt-6 min-h-[46px]">{quests && <DayProgress today={quests} autoClaim={autoClaim} />}</div>
           </header>
 
           <div className="order-2 flex min-w-0 flex-col gap-4">
+            {/* First thing on the page after the date: the one thing to do now. */}
+            {quests && tasks && inProgress ? (
+              <NextCard now={now} todayKey={todayKey} items={quests.items} slots={slots} tasks={tasks} inProgress={inProgress} onAdd={() => setSheet({ mode: 'create', category: 'dq' })} />
+            ) : (
+              <div aria-hidden className="h-[148px] animate-pulse rounded-card border border-line bg-surface motion-reduce:animate-none" />
+            )}
             {prompt === 'today' && (
               <PlanPrompt
                 day="today"
@@ -148,11 +166,11 @@ function Home() {
               />
             )}
             <BackupNudge />
-            <NowPanel todayKey={todayKey} />
+            <GoalsStrip views={goalViews} />
           </div>
 
           {/* Side padding + negative margin keep focus rings from being clipped. */}
-          <div className="order-4 min-w-0 lg:-mx-3 lg:px-3 lg:pb-12">
+          <div className="order-3 min-w-0 lg:-mx-3 lg:px-3 lg:pb-12">
             {quests ? (
               <QuestLists
                 today={quests}
@@ -163,6 +181,10 @@ function Home() {
             ) : (
               <ListsSkeleton />
             )}
+            {/* Started board work and loose ends: reference, under the day's list. The Next card already surfaces them. */}
+            <div className="mt-8">
+              <NowPanel todayKey={todayKey} />
+            </div>
           </div>
         </div>
 
@@ -170,7 +192,7 @@ function Home() {
           aria-label="Your jar and calendar"
           className="contents lg:m-3 lg:flex lg:min-w-0 lg:flex-col lg:gap-5 lg:rounded-[28px] lg:bg-[var(--stage-bg)] lg:ring-1 lg:ring-line lg:p-6 lg:text-ink xl:p-7 tall:min-h-0"
         >
-          <div className={`order-3 flex min-w-0 flex-col ${STAGE_CARD} tall:min-h-0 tall:flex-1`}>
+          <div className={`order-4 flex min-w-0 flex-col ${STAGE_CARD} tall:min-h-0 tall:flex-1`}>
             <QuestJar />
           </div>
           <div className={`order-5 min-w-0 ${STAGE_CARD}`}>
@@ -191,7 +213,7 @@ function Home() {
           onClose={() => setPlanning(null)}
         />
       )}
-    </>
+    </GoalsContext.Provider>
   )
 }
 
