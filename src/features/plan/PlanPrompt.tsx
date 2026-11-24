@@ -1,9 +1,8 @@
 import { format } from 'date-fns'
-import { AlarmClock, CalendarClock, Sunrise } from 'lucide-react'
+import { CalendarClock, Sunrise } from 'lucide-react'
 import type { PlanSlot } from '../../db/types'
 import { parseDayKey } from '../quests/day'
-import { downloadPlanIcs } from '../reminders/ics'
-import { FRESH_START_LINE, formatTime, slotKey, type FreshStart, type PlanDay } from './model'
+import { FRESH_START_LINE, formatTime, type FreshStart, type PlanDay } from './model'
 
 const focus = 'outline-none focus-visible:ring-2 focus-visible:ring-ring'
 
@@ -70,7 +69,6 @@ export function PlanPreview({
   onEdit: () => void
   onConfirm?: () => void
 }) {
-  const events = lines.filter((l) => !l.done).map((l) => ({ key: slotKey(l.slot), time: l.slot.time, title: l.title, ifThen: l.slot.ifThen }))
   const review = variant === 'review'
   const title = review ? 'Your plan for today' : `Tomorrow, ${format(parseDayKey(dayKey), 'EEEE')}`
   return (
@@ -89,17 +87,6 @@ export function PlanPreview({
           )}
         </div>
         <div className="flex shrink-0 gap-1">
-          {events.length > 0 && (
-            <button
-              type="button"
-              onClick={() => downloadPlanIcs(dayKey, events)}
-              title="Downloads these as calendar events with alarms, so you’re rung even when Pebblework is closed."
-              className={`inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-[13px] font-medium text-muted transition hover:bg-sunken hover:text-ink ${focus}`}
-            >
-              <AlarmClock aria-hidden className="size-3.5" strokeWidth={1.75} />
-              Add to calendar
-            </button>
-          )}
           <button
             type="button"
             onClick={onEdit}

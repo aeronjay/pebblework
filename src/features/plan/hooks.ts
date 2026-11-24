@@ -4,7 +4,7 @@ import { db } from '../../db/db'
 import type { DayPlan } from '../../db/types'
 import { addDaysToKey } from '../quests/day'
 import { promiseLines, type PromiseLine } from './model'
-import { getPlan, keptKeys } from './repo'
+import { getPlan, keptKeys, livePromise } from './repo'
 
 export interface PlanState {
   plan: DayPlan | undefined // undefined = no plan yet today
@@ -35,7 +35,12 @@ export interface PromiseRecord {
 export function usePromiseRecord(todayKey: string): PromiseRecord | undefined {
   return useLiveQuery(async () => {
     const past = (await db.dayPlans.where('dayKey').below(todayKey).toArray()).filter((p) => !p.deletedAt && p.promise?.length)
-    const days = await Promise.all(past.map(async (p) => ({ dayKey: p.dayKey, lines: promiseLines(p.promise, await keptKeys(p.dayKey, p.promise!), true) })))
+    const days = await Promise.all(
+      past.map(async (p) => {
+        const promise = await livePromise(p.dayKey, p.promise!)
+        return { dayKey: p.dayKey, lines: promiseLines(promise, await keptKeys(p.dayKey, promise), true) }
+      }),
+    )
     const lines = days.flatMap((d) => d.lines)
     return {
       yesterday: days.find((d) => d.dayKey === addDaysToKey(todayKey, -1))?.lines,
@@ -55,7 +60,8 @@ export function useDayRecord(key: string | undefined, todayKey: string): DayReco
   return useLiveQuery(async () => {
     if (!key) return undefined
     const plan = await getPlan(key)
-    const promise = plan?.promise?.length ? promiseLines(plan.promise, await keptKeys(key, plan.promise), key < todayKey) : []
+    const promised = plan?.promise?.length ? await livePromise(key, plan.promise) : []
+    const promise = promised.length ? promiseLines(promised, await keptKeys(key, promised), key < todayKey) : []
     return { promise, note: plan?.note }
   }, [key, todayKey])
 }

@@ -1,5 +1,4 @@
 import { describe, expect, it } from 'vitest'
-import { buildPlanIcs } from '../reminders/ics'
 import { alarmId, dueAlarm, msUntilNext, snoozeTime, type AlarmSlot } from './model'
 
 const at = (h: number, m = 0, s = 0) => new Date(2026, 10, 4, h, m, s)
@@ -47,32 +46,5 @@ describe('timing', () => {
     expect(snoozeTime(at(9, 3))).toBe('09:13')
     expect(snoozeTime(at(23, 49))).toBe('23:59')
     expect(snoozeTime(at(23, 55))).toBeUndefined()
-  })
-})
-
-describe('buildPlanIcs', () => {
-  const ics = buildPlanIcs(
-    '2026-11-05',
-    [
-      { key: 'q:abc', time: '09:00', title: 'Write, then edit', ifThen: 'do it after lunch' },
-      { key: 't:xyz', time: '14:30', title: 'Call the bank' },
-    ],
-    'https://example.test/',
-    at(20),
-  )
-
-  it('makes one event with an alarm per slot, on the plan’s day at local time', () => {
-    expect(ics.match(/BEGIN:VEVENT/g)).toHaveLength(2)
-    expect(ics.match(/BEGIN:VALARM/g)).toHaveLength(2)
-    expect(ics).toContain('DTSTART:20261105T090000')
-    expect(ics).toContain('DTSTART:20261105T143000')
-    expect(ics).not.toContain('RRULE')
-  })
-
-  it('escapes text and keeps ids stable per day and slot', () => {
-    expect(ics).toContain('SUMMARY:Write\\, then edit')
-    expect(ics).toContain('If it slips\\, I’ll do it after lunch\\n')
-    expect(ics).toContain('UID:plan-2026-11-05-q-abc@pebblework')
-    expect(ics).not.toMatch(/[^\r]\n/)
   })
 })

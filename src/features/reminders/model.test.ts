@@ -1,5 +1,4 @@
 import { describe, expect, it } from 'vitest'
-import { buildRemindersIcs } from './ics'
 import { cleanReminders, dueReminders, type ReminderInput } from './model'
 
 const todayKey = '2026-11-04'
@@ -67,25 +66,5 @@ describe('cleanReminders', () => {
   it('defaults to off with sane times, and repairs bad ones', () => {
     expect(cleanReminders(undefined)).toEqual({ enabled: false, morning: '08:00', evening: '20:00' })
     expect(cleanReminders({ enabled: true, morning: '7am', evening: '21:30' })).toEqual({ enabled: true, morning: '08:00', evening: '21:30' })
-  })
-})
-
-describe('buildRemindersIcs', () => {
-  const ics = buildRemindersIcs({ morning: '07:30', evening: '21:00' }, 'https://example.test/app', new Date(2026, 10, 4, 12))
-
-  it('has two daily events with alarms at the chosen local times', () => {
-    expect(ics.match(/BEGIN:VEVENT/g)).toHaveLength(2)
-    expect(ics.match(/RRULE:FREQ=DAILY/g)).toHaveLength(2)
-    expect(ics.match(/BEGIN:VALARM/g)).toHaveLength(2)
-    expect(ics).toContain('DTSTART:20261104T073000')
-    expect(ics).toContain('DTSTART:20261104T210000')
-  })
-
-  it('uses stable ids, CRLF line ends and escaped text', () => {
-    expect(ics).toContain('UID:morning@pebblework')
-    expect(ics).toContain('UID:evening@pebblework')
-    expect(ics.split('\r\n').length).toBeGreaterThan(20)
-    expect(ics).not.toMatch(/[^\r]\n/)
-    expect(ics).toContain('SUMMARY:Pebblework: close today\\, plan tomorrow')
   })
 })

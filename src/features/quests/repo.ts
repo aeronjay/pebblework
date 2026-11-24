@@ -1,6 +1,7 @@
 import { db, getDeviceId, newId, newMeta, type MarbleDB } from '../../db/db'
 import type { Quest, QuestCategory, QuestCompletion, ScheduleSpan } from '../../db/types'
 import { createProjectBoard } from '../board/repo'
+import { forgetInPlans } from '../plan/forget'
 import { CATEGORY_ORDER, canComplete, completionId, dayKey, isEveryDay, isMissed, isProject, isQuestCompletion, normalizeDays, scheduleOn } from './day'
 import { QuestError } from './errors'
 
@@ -132,10 +133,11 @@ export async function updateQuest(id: string, patch: QuestPatch, now: Date = new
 }
 
 // Soft delete. Past days keep the quest; today's unclaimed completions of it (incl. a project's card/bonus
-// completions) are withdrawn; claimed ones stay. A project's columns and cards are soft-deleted with it.
+// completions) are withdrawn; claimed ones stay. A project's columns and cards are soft-deleted with it. It leaves
+// today's and later plans too (see forgetInPlans).
 export async function deleteQuest(id: string, now: Date = new Date(), database: MarbleDB = db): Promise<void> {
   const today = dayKey(now)
-  const tables = [database.quests, database.questCompletions, database.dayClaims, database.boardColumns, database.cards]
+  const tables = [database.quests, database.questCompletions, database.dayClaims, database.boardColumns, database.cards, database.dayPlans]
   await database.transaction('rw', tables, async () => {
     const q = await database.quests.get(id)
     if (!q || q.deletedAt) return
@@ -148,6 +150,7 @@ export async function deleteQuest(id: string, now: Date = new Date(), database: 
       .equals(id)
       .filter((c) => !c.deletedAt && !c.claimedAt && c.dayKey === today)
       .modify(gone)
+    await forgetInPlans(`q:${id}`, today, now, database)
   })
 }
 

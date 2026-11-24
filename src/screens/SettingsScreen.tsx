@@ -1,12 +1,11 @@
 import { formatDistanceToNow } from 'date-fns'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { AlarmClock, BellRing, CalendarPlus, Download, Gem, Monitor, Moon, Sun, Upload, Vibrate, Volume2, type LucideIcon } from 'lucide-react'
+import { AlarmClock, BellRing, Download, Gem, Monitor, Moon, Sun, Upload, Vibrate, Volume2, type LucideIcon } from 'lucide-react'
 import { useRef, useState, type ChangeEvent, type ReactNode } from 'react'
 import { applyTheme } from '../app/theme'
 import { BackupError, downloadBackup, importBackup, parseBackup } from '../db/backup'
 import { DEFAULT_SETTINGS, db, getSettings } from '../db/db'
 import type { ReminderSettings, Settings } from '../db/types'
-import { downloadRemindersIcs } from '../features/reminders/ics'
 import { cleanReminders } from '../features/reminders/model'
 import { askToNotify, notify, notifyState, type NotifyState } from '../features/reminders/notify'
 import { seg, segGroup, ui } from '../ui/styles'
@@ -130,7 +129,7 @@ export function SettingsScreen() {
           <Toggle
             Icon={AlarmClock}
             label="Alarm at planned start times"
-            hint="When a time in your plan arrives, Pebblework chimes and puts the task on screen with a one-tap start. Works while it’s open; the chime follows the Sound setting. For when it’s closed, add the plan to your calendar after planning."
+            hint="When a time in your plan arrives, Pebblework chimes and puts the task on screen with a one-tap start. Works while it’s open; the chime follows the Sound setting."
             on={settings?.planAlarm ?? true}
             onChange={(planAlarm) => void saveSettings({ planAlarm })}
           />
@@ -139,7 +138,7 @@ export function SettingsScreen() {
             label="Notify me"
             hint={
               permission === 'unsupported'
-                ? 'This browser can’t show notifications. Use the calendar reminders below.'
+                ? 'This browser can’t show notifications.'
                 : permission === 'denied'
                   ? 'Notifications are blocked for this site. Allow them in your browser’s site settings, then switch this on.'
                   : 'In the morning, at each start time in your plan, and once in the evening. Only while Pebblework is open in a tab or installed as an app: with no server, it can’t reach you when it’s fully closed.'
@@ -150,21 +149,6 @@ export function SettingsScreen() {
           <li className="flex flex-wrap items-center gap-x-6 gap-y-3 px-5 py-3.5">
             <TimeField label="Morning" value={reminders.morning} onChange={(morning) => saveReminders({ morning })} />
             <TimeField label="Evening" value={reminders.evening} onChange={(evening) => saveReminders({ evening })} />
-          </li>
-          <li className="flex flex-wrap items-center gap-x-4 gap-y-3 px-5 py-4">
-            <span className="grid size-9 shrink-0 place-items-center rounded-[10px] bg-sunken text-muted">
-              <CalendarPlus aria-hidden className="size-[18px]" strokeWidth={1.75} />
-            </span>
-            <span className="min-w-[200px] flex-1">
-              <span className="block text-[14px] font-medium text-ink">Daily reminders in your calendar</span>
-              <span className="block text-[12.5px] text-faint">
-                Downloads a calendar file with a repeating reminder at both times. Open it on your phone or computer once and your own calendar reminds you every day, even when Pebblework is closed.
-              </span>
-            </span>
-            <button type="button" className={`${ui.btn} ${ui.secondary} text-[14px]`} onClick={() => downloadRemindersIcs(reminders)}>
-              <Download aria-hidden className="size-4" strokeWidth={1.75} />
-              Get calendar file
-            </button>
           </li>
         </ul>
       </section>

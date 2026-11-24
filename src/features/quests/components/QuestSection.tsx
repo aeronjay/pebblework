@@ -203,7 +203,7 @@ export function QuestSection(props: Props) {
 
 // Wires one row into drag and drop: the row renders the grip and takes the transform on its inner box (the <li>
 // keeps motion's enter/exit; its layout animation is off while sorting so it doesn't fight dnd-kit).
-function SortableQuest({ id, title, sorting, children }: { id: string; title: string; sorting: boolean; children: (drag: RowDrag) => ReactNode }) {
+export function SortableQuest({ id, title, sorting, children }: { id: string; title: string; sorting: boolean; children: (drag: RowDrag) => ReactNode }) {
   const reduce = useReducedMotion()
   const { setNodeRef, setActivatorNodeRef, attributes, listeners, transform, transition, isDragging } = useSortable({ id })
   return children({

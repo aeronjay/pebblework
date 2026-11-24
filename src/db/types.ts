@@ -146,7 +146,7 @@ export interface Settings {
 }
 
 // Nudges to open the app. Notifications only fire while Pebblework is open somewhere (a tab or the installed app):
-// there's no server to push from. The calendar file (see reminders/ics.ts) covers the times it's closed.
+// there's no server to push from.
 export interface ReminderSettings {
   enabled: boolean
   morning: string // "HH:mm": what today asks for

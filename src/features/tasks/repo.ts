@@ -3,6 +3,7 @@ import type { Stone, Task } from '../../db/types'
 import { dayKey } from '../quests/day'
 import { ensureActiveQuestJar } from '../quests/claim'
 import { rollRarity } from '../marbles/engine'
+import { forgetInPlans } from '../plan/forget'
 
 export interface NewTask {
   title: string
@@ -86,10 +87,13 @@ export async function updateTask(id: string, patch: TaskPatch, now: Date = new D
   })
 }
 
+// Also leaves today's and later plans (see forgetInPlans): a deleted loose end isn't a broken promise.
 export async function deleteTask(id: string, now: Date = new Date(), database: MarbleDB = db): Promise<void> {
-  await database.transaction('rw', database.tasks, async () => {
+  await database.transaction('rw', database.tasks, database.dayPlans, async () => {
     const task = await getLive(id, database)
-    if (task) await database.tasks.put({ ...touch(task, now.toISOString()), deletedAt: now.toISOString() })
+    if (!task) return
+    await database.tasks.put({ ...touch(task, now.toISOString()), deletedAt: now.toISOString() })
+    await forgetInPlans(`t:${id}`, dayKey(now), now, database)
   })
 }
 

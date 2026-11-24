@@ -77,8 +77,8 @@ The rest of the app follows a few rules:
 | **The promise** | A plan is a promise to yourself, like writing tomorrow on a sheet of paper. You make it by pressing and holding **I promise**, not with a quick tap. After that, times can still move (the alarm and **Move to…** work as before), but taking a promised thing out of the plan asks first and counts as a broken promise. So does moving a quest promised for today onto tomorrow's plan. A promise is kept when it's finished that day. The next morning, Home shows how yesterday went (kept, or broken, item by item) and how many promises you've kept so far. |
 | **Promises** | No page of their own: click a day on the calendar next to the jar to see what you promised for it (kept, broken, or still open) and the note you wrote with its plan. For today and tomorrow, **Edit plan** opens the plan sheet from there. |
 | **Quest calendar** | A month grid that marks each day as pending, ready, or claimed. Heavier days drop more stones, like a GitHub contribution graph. Stones drop on their own a few seconds after you finish something (you can untick it until then); switch that off in Settings to claim by hand with one **Claim** button instead. |
-| **Plan alarm** | When a start time in your plan arrives, Pebblework chimes three times and puts the task on screen over whatever you're looking at, with **Start, 25 min**, **Just 5 min** and **In 10 min**. Putting it off moves the slot in the plan, so it rings again at the new time instead of going quiet. It works while the app is open; **Add to calendar** (offered right after planning, and on the plan cards) exports the plan as calendar events with alarms for when it's closed. |
-| **Reminders** | Optional notifications in the morning, at each start time in your plan, and once in the evening. They only fire while Pebblework is open in a tab or installed, since there's no server to push from. For the days it's closed, Settings downloads a calendar file with two repeating daily reminders for your own calendar app. The installed app's icon also shows how many quests today still asks for. |
+| **Plan alarm** | When a start time in your plan arrives, Pebblework chimes three times and puts the task on screen over whatever you're looking at, with **Start, 25 min**, **Just 5 min** and **In 10 min**. Putting it off moves the slot in the plan, so it rings again at the new time instead of going quiet. It works while the app is open. |
+| **Reminders** | Optional notifications in the morning, at each start time in your plan, and once in the evening. They only fire while Pebblework is open in a tab or installed, since there's no server to push from. The installed app's icon also shows how many quests today still asks for. |
 | **The jar** | A physics-simulated jar (matter-js) where stones drop, bounce and settle. Its capacity scales with your quest load. Now and then a stone comes out golden. A jar that replaces a sealed one starts with 3 stones already in it. |
 | **Backup reminder** | When your last backup is a month old, Home suggests downloading one. "Later" snoozes it for two weeks. |
 | **Projects** | Break bigger goals into Kanban boards with draggable columns, cards and subtasks. Every stage you finish earns a stone. |
@@ -163,7 +163,7 @@ src/
 │   ├── review/      # Weekly review
 │   ├── identity/    # Goals: outcomes to reach and "who I'm becoming" statements
 │   ├── next/        # Home's "Next up" card and the rules behind its pick
-│   ├── reminders/   # Notifications, the calendar file, the app badge
+│   ├── reminders/   # Notifications and the app badge
 │   ├── notes/       # Notes
 │   └── …
 ├── screens/      # One component per route

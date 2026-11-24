@@ -80,3 +80,27 @@ export function tabCategory(id: unknown): QuestCategory | undefined {
   const c = id.slice(TAB.length)
   return isCategory(c) ? c : undefined
 }
+
+// Today view drag: quest `id` dropped on `overId`, both in the same list. The list (every quest in it, today's or not,
+// in stored order) as it becomes, and the quest it now sits before (placeQuest's `beforeId`; null = last).
+// undefined = nothing to do (a different list, or the same spot).
+export function reorderWithin(items: QuestItem[], id: string, overId: string): { category: QuestCategory; ids: string[]; before: string | null } | undefined {
+  const moved = items.find((i) => i.quest.id === id)
+  const over = items.find((i) => i.quest.id === overId)
+  if (!moved || !over || id === overId || moved.quest.category !== over.quest.category) return undefined
+  const category = moved.quest.category
+  const ids = items.filter((i) => i.quest.category === category).map((i) => i.quest.id)
+  ids.splice(ids.indexOf(id), 1)
+  // Same final-index semantics as the other lists: dragged down, it lands after `over`; dragged up, before it.
+  const down = items.indexOf(moved) < items.indexOf(over)
+  ids.splice(ids.indexOf(overId) + (down ? 1 : 0), 0, id)
+  return { category, ids, before: ids[ids.indexOf(id) + 1] ?? null }
+}
+
+// `items` with one list's quests put in the order given (ids not in the list are ignored; the other lists stay put).
+export function withListOrder(items: QuestItem[], category: QuestCategory, ids: string[]): QuestItem[] {
+  const rank = new Map(ids.map((id, i) => [id, i]))
+  const mine = items.filter((i) => i.quest.category === category).sort((a, b) => (rank.get(a.quest.id) ?? Infinity) - (rank.get(b.quest.id) ?? Infinity))
+  let k = 0
+  return items.map((i) => (i.quest.category === category ? mine[k++] : i))
+}

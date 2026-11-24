@@ -3,7 +3,7 @@ import { freshDb } from '../../test/db'
 import { completeQuest, createQuest, deleteQuest } from '../quests/repo'
 import { createTask, deleteTask, toggleTask } from '../tasks/repo'
 import { needsReview, promiseLines } from './model'
-import { getPlan, keptKeys, planDay, retimeSlot, reviewPlan, savePlan, skipPlan, unplanSlot } from './repo'
+import { getPlan, keptKeys, livePromise, planDay, retimeSlot, reviewPlan, savePlan, skipPlan, unplanSlot } from './repo'
 
 const now = new Date(2026, 10, 4, 8)
 const earlier = new Date(2026, 10, 1, 8)
@@ -201,6 +201,37 @@ describe('plan repo', () => {
   })
 
   describe('the promise', () => {
+    it('deleting a planned loose end or quest takes it out of today’s and tomorrow’s plans without breaking anything', async () => {
+      const d = freshDb()
+      const TOMORROW = '2026-11-05'
+      const q = await createQuest({ category: 'dq', title: 'Walk' }, now, d)
+      const t = await createTask({ title: 'Call the bank' }, now, d)
+      const u = await createTask({ title: 'Pay rent' }, now, d)
+      await savePlan(KEY, [{ taskId: t, time: '09:00' }, { questId: q, time: '10:00' }], earlier, d)
+      await savePlan(TOMORROW, [{ taskId: t, time: '09:00' }, { taskId: u, time: '10:00' }], now, d)
+      await deleteTask(t, now, d)
+      await deleteQuest(q, now, d)
+      expect((await getPlan(KEY, d))?.slots).toEqual([])
+      expect((await getPlan(KEY, d))?.promise).toBeUndefined()
+      expect((await getPlan(TOMORROW, d))?.slots).toEqual([{ taskId: u, time: '10:00' }])
+      expect((await getPlan(TOMORROW, d))?.promise).toEqual([{ key: `t:${u}`, title: 'Pay rent' }])
+      // Re-saving tomorrow doesn't bring it back as broken.
+      await savePlan(TOMORROW, [{ taskId: u, time: '11:00' }], now, d)
+      expect((await getPlan(TOMORROW, d))?.promise?.every((p) => !p.brokenAt)).toBe(true)
+    })
+
+    it('a promise counts only what still existed on its day', async () => {
+      const d = freshDb()
+      const promise = [{ key: 't:a', title: 'A' }, { key: 't:b', title: 'B' }]
+      const a = await createTask({ title: 'A' }, earlier, d)
+      const b = await createTask({ title: 'B' }, earlier, d)
+      const items = [{ key: `t:${a}`, title: 'A' }, { key: `t:${b}`, title: 'B' }]
+      await deleteTask(a, new Date(2026, 10, 3, 8), d) // before the day: doesn't count
+      await deleteTask(b, new Date(2026, 10, 6, 8), d) // after the day: keeps its record
+      expect(await livePromise(KEY, items, d)).toEqual([{ key: `t:${b}`, title: 'B' }])
+      expect(await livePromise(KEY, promise, d)).toEqual(promise) // unknown ids are left alone
+    })
+
     it('saving promises what is on the plan; moving a time keeps the promise', async () => {
       const d = freshDb()
       const a = await createQuest({ category: 'dq', title: 'Walk' }, now, d)

@@ -120,6 +120,17 @@ export async function keptKeys(key: string, promise: PromiseItem[], database: Ma
   ])
 }
 
+// Day `key`'s promise without what was deleted on or before that day: deciding not to do something at all isn't
+// breaking a promise to do it. Deleting takes it out of today's and later plans; this also covers plans saved before
+// that was so. Something deleted after its day keeps its record.
+export async function livePromise(key: string, promise: PromiseItem[], database: MarbleDB = db): Promise<PromiseItem[]> {
+  const ids = (prefix: string) => promise.flatMap((p) => (p.key.startsWith(prefix) ? [p.key.slice(2)] : []))
+  const [quests, tasks] = await Promise.all([database.quests.bulkGet(ids('q:')), database.tasks.bulkGet(ids('t:'))])
+  const goneBy = (x: { id: string; deletedAt?: string } | undefined, prefix: string) => (x?.deletedAt && isoToDayKey(x.deletedAt) <= key ? [`${prefix}${x.id}`] : [])
+  const gone = new Set([...quests.flatMap((q) => goneBy(q, 'q:')), ...tasks.flatMap((t) => goneBy(t, 't:'))])
+  return promise.filter((p) => !gone.has(p.key))
+}
+
 // "Not today": the prompt stays quiet for the rest of the day.
 export async function skipPlan(key: string, now: Date = new Date(), database: MarbleDB = db): Promise<void> {
   await put(key, { slots: [], skipped: true }, now, database)

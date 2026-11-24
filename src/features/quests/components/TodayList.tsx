@@ -1,3 +1,15 @@
+import {
+  closestCenter,
+  DndContext,
+  KeyboardSensor,
+  MouseSensor,
+  TouchSensor,
+  useSensor,
+  useSensors,
+  type CollisionDetection,
+  type DragEndEvent,
+} from '@dnd-kit/core'
+import { SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import { ChevronDown, Plus } from 'lucide-react'
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
 import { useState } from 'react'
@@ -8,12 +20,15 @@ import { retimeSlot } from '../../plan/repo'
 import { useTasks } from '../../tasks/hooks'
 import { PlannedTaskRow } from '../../tasks/PlannedTaskRow'
 import type { QuestItem } from '../hooks'
-import { todayItems } from './lists'
+import type { QuestCategory } from '../../../db/types'
+import { placeQuest } from '../repo'
+import { reorderWithin, todayItems, withListOrder } from './lists'
 import type { ProjectSummary } from '../../board/hooks'
 import { isProject } from '../day'
 import { useAutoClaimSetting } from '../useAutoClaim'
 import { ProjectRow } from './ProjectRow'
-import { QuestRow, type RowPlan } from './QuestRow'
+import { QuestRow, type RowDrag, type RowPlan } from './QuestRow'
+import { SortableQuest } from './QuestSection'
 import { useToast } from './toastContext'
 
 interface Props {
@@ -27,11 +42,21 @@ interface Props {
   projects?: Map<string, ProjectSummary> // board summaries, for planned projects
 }
 
-// Every list's quests for today in one short list (category order, then each list's own order; reorder on a list's tab).
+// Every list's quests for today in one short list (category order, then each list's own order). Unplanned quests drag
+// to reorder within their own list (that list's order everywhere); planned ones lead by time and stay put.
 // Finished quests fold into a quiet "N done today" line so the list shrinks as the day goes. One finished while this
 // view is open stays in place (its check animates and it can still be unticked) until the view is left or reloaded.
-export function TodayList({ items, todayKey, claimed, onAdd, onEdit, onBrowse, slots, projects }: Props) {
+export function TodayList({ items: live, todayKey, claimed, onAdd, onEdit, onBrowse, slots, projects }: Props) {
   const reduce = useReducedMotion()
+  // A dropped reorder shows at once and is held until the live query catches up (same `live` array = not yet).
+  const [held, setHeld] = useState<{ category: QuestCategory; ids: string[]; base: QuestItem[] } | null>(null)
+  const [dragging, setDragging] = useState(false)
+  const items = held && held.base === live ? withListOrder(live, held.category, held.ids) : live
+  const sensors = useSensors(
+    useSensor(MouseSensor, { activationConstraint: { distance: 6 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 6 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  )
   const [showDone, setShowDone] = useState(false)
   const toast = useToast()
   const now = useNow()
@@ -74,6 +99,33 @@ export function TodayList({ items, todayKey, claimed, onAdd, onEdit, onBrowse, s
     ...shown.filter((i) => !plannedIds.has(i.quest.id)).map((item): Entry => ({ kind: 'quest', item })),
   ]
 
+  // Only quests of the dragged one's list are drop targets, so the others never shuffle to make room.
+  const categoryOf = new Map(items.map((i) => [i.quest.id, i.quest.category]))
+  const sortable = rows.flatMap((r) => (r.kind === 'quest' && !plannedIds.has(r.item.quest.id) ? [r.item.quest.id] : []))
+  const collision: CollisionDetection = (args) => {
+    const c = categoryOf.get(String(args.active.id))
+    return closestCenter({ ...args, droppableContainers: args.droppableContainers.filter((d) => categoryOf.get(String(d.id)) === c) })
+  }
+
+  async function onDragEnd({ active, over }: DragEndEvent) {
+    setDragging(false)
+    const move = over ? reorderWithin(items, String(active.id), String(over.id)) : undefined
+    if (!move) return
+    setHeld({ ...move, base: live })
+    const ok = await toast.run(async () => {
+      await placeQuest(String(active.id), move.category, move.before)
+      return true
+    })
+    if (!ok) setHeld(null)
+  }
+
+  const renderQuest = (item: QuestItem, drag?: RowDrag) =>
+    isProject(item.quest) ? (
+      <ProjectRow key={item.quest.id} item={item} summary={projects?.get(item.quest.id)} todayKey={todayKey} onEdit={() => onEdit(item)} plan={planFor(item)} drag={drag} />
+    ) : (
+      <QuestRow key={item.quest.id} item={item} todayKey={todayKey} claimed={claimed} onEdit={() => onEdit(item)} showCategory plan={planFor(item)} drag={drag} />
+    )
+
   const spring = reduce ? { duration: 0 } : { type: 'spring' as const, bounce: 0, duration: 0.42 }
   const fade = reduce ? { duration: 0 } : { duration: 0.2 }
 
@@ -97,19 +149,31 @@ export function TodayList({ items, todayKey, claimed, onAdd, onEdit, onBrowse, s
               <span className="font-semibold text-ink">Everything for today is done.</span>{autoClaim ? '' : ' Claim it on the calendar.'}
             </p>
           )}
-          <ul>
-            <AnimatePresence initial={false}>
-              {rows.map((row) => {
-                if (row.kind === 'task') return <PlannedTaskRow key={`t:${row.task.id}`} task={row.task} todayKey={todayKey} plan={planOf(row.slot)} />
-                const { item } = row
-                return isProject(item.quest) ? (
-                  <ProjectRow key={item.quest.id} item={item} summary={projects?.get(item.quest.id)} todayKey={todayKey} onEdit={() => onEdit(item)} plan={planFor(item)} />
-                ) : (
-                  <QuestRow key={item.quest.id} item={item} todayKey={todayKey} claimed={claimed} onEdit={() => onEdit(item)} showCategory plan={planFor(item)} />
-                )
-              })}
-            </AnimatePresence>
-          </ul>
+          <DndContext
+            sensors={sensors}
+            collisionDetection={collision}
+            onDragStart={() => setDragging(true)}
+            onDragEnd={(e) => void onDragEnd(e)}
+            onDragCancel={() => setDragging(false)}
+            accessibility={{ screenReaderInstructions: { draggable: 'Press Space to pick up a quest, arrow keys to move it within its list, Space to drop, Escape to cancel.' } }}
+          >
+            <SortableContext items={sortable} strategy={verticalListSortingStrategy}>
+              <ul>
+                <AnimatePresence initial={false}>
+                  {rows.map((row) => {
+                    if (row.kind === 'task') return <PlannedTaskRow key={`t:${row.task.id}`} task={row.task} todayKey={todayKey} plan={planOf(row.slot)} />
+                    const { item } = row
+                    if (plannedIds.has(item.quest.id)) return renderQuest(item)
+                    return (
+                      <SortableQuest key={item.quest.id} id={item.quest.id} title={item.quest.title} sorting={dragging}>
+                        {(drag) => renderQuest(item, drag)}
+                      </SortableQuest>
+                    )
+                  })}
+                </AnimatePresence>
+              </ul>
+            </SortableContext>
+          </DndContext>
         </>
       )}
 
