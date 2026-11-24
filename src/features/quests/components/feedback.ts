@@ -13,3 +13,12 @@ export function useCompleteFeedback(): () => void {
     if (haptics) buzz(14)
   }, [sound, haptics])
 }
+
+// A light tick when a held check is fully charged: "you can let go now".
+export function useReadyFeedback(): () => void {
+  const settings = useLiveQuery(() => getSettings())
+  const haptics = settings?.haptics ?? true
+  return useCallback(() => {
+    if (haptics) buzz(6)
+  }, [haptics])
+}

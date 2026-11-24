@@ -13,29 +13,42 @@ interface Props {
   title: string
   reason?: string // why it can't be toggled (locked / doneFixed / missed)
   onToggle: () => void
+  onReady?: () => void // the ring just closed: letting go now (on the circle) completes
 }
 
 // Glyph on the category-colored fill: near-black reads at ≥ 7:1 on all three tints in both themes.
 const CHECK_INK = 'rgb(12 13 16 / 0.86)'
 
-// Completing is a press-and-hold: long enough to feel like a deliberate act, short enough not to drag.
+// Completing is press, hold until the ring closes, then let go on the circle. The ring keeps charging even if the
+// pointer wanders off; only where you let go decides it, so sliding away before releasing is a clean way to back out.
 // Unchecking stays a plain tap so undoing a slip is never a chore.
 const HOLD_S = 0.6
 const TAP_HINT_S = 0.22 // released sooner than this → it was a tap, so explain the hold
+const SLOP_PX = 6 // "on the circle" includes the progress ring around it, plus a little give for fingers
 
 const isActivationKey = (e: KeyboardEvent) => e.key === ' ' || e.key === 'Enter'
 
-export function QuestCheck({ state, category, title, reason, onToggle }: Props) {
+function isOver(el: HTMLElement, x: number, y: number): boolean {
+  const r = el.getBoundingClientRect()
+  return Math.hypot(x - (r.left + r.width / 2), y - (r.top + r.height / 2)) <= el.offsetWidth / 2 + SLOP_PX
+}
+
+export function QuestCheck({ state, category, title, reason, onToggle, onReady }: Props) {
   const reduce = useReducedMotion()
   const hintId = useId()
   const [burst, setBurst] = useState(0)
   const [pressing, setPressing] = useState(false)
-  const [hint, setHint] = useState(0)
+  const [armed, setArmed] = useState(false)
+  const [outside, setOutside] = useState(false)
+  const [hint, setHint] = useState<{ n: number; text: string } | null>(null)
   const progress = useMotionValue(0)
   const ringOpacity = useTransform(progress, [0, 0.03], [0, 1])
   const chargeScale = useTransform(progress, [0, 1], [0.3, 0.86])
   const chargeOpacity = useTransform(progress, [0, 1], [0, 0.4])
-  const hold = useRef<AnimationPlaybackControls | null>(null)
+  const holding = useRef(false)
+  const charge = useRef<AnimationPlaybackControls | null>(null)
+  const armedRef = useRef(false)
+  const insideRef = useRef(true)
   const startedAt = useRef(0)
   const swallowClick = useRef(false) // the click that ends a pointer hold must not toggle again
   const keyHolding = useRef(false)
@@ -43,41 +56,63 @@ export function QuestCheck({ state, category, title, reason, onToggle }: Props) 
   const done = state === 'done' || state === 'doneFixed'
   const interactive = state === 'open' || state === 'done'
 
-  useEffect(() => () => hold.current?.stop(), [])
+  useEffect(() => () => charge.current?.stop(), [])
   useEffect(() => {
     if (!hint) return
-    const t = setTimeout(() => setHint(0), 1400)
+    const t = setTimeout(() => setHint(null), 1600)
     return () => clearTimeout(t)
   }, [hint])
 
-  function complete() {
-    hold.current = null
-    setPressing(false)
-    setHint(0)
+  function showHint(text: string) {
+    setHint((h) => ({ n: (h?.n ?? 0) + 1, text }))
+  }
+
+  function finish() {
     progress.set(0)
+    setHint(null)
     setBurst((n) => n + 1)
     onToggle()
   }
 
   function startHold() {
-    if (!interactive || done || hold.current) return
+    if (!interactive || done || holding.current) return
+    holding.current = true
+    armedRef.current = false
+    insideRef.current = true
     startedAt.current = performance.now()
     setPressing(true)
-    setHint(0)
-    hold.current = animate(progress, 1, {
+    setArmed(false)
+    setOutside(false)
+    setHint(null)
+    charge.current = animate(progress, 1, {
       duration: HOLD_S * (1 - progress.get()),
       ease: [0.35, 0, 0.65, 1],
-      onComplete: complete,
+      onComplete: () => {
+        armedRef.current = true
+        setArmed(true)
+        onReady?.()
+      },
     })
   }
 
-  function cancelHold() {
-    if (!hold.current) return
-    hold.current.stop()
-    hold.current = null
+  // commit: a real release (pointer up / key up). Otherwise the hold was interrupted (blur, pointer cancel): back out quietly.
+  function endHold(commit: boolean) {
+    if (!holding.current) return
+    const full = armedRef.current
+    const heldS = (performance.now() - startedAt.current) / 1000
+    holding.current = false
+    armedRef.current = false
+    charge.current?.stop()
+    charge.current = null
     setPressing(false)
-    if ((performance.now() - startedAt.current) / 1000 < TAP_HINT_S) setHint((n) => n + 1)
+    setArmed(false)
+    setOutside(false)
+    if (commit && full && insideRef.current) return finish()
     animate(progress, 0, { duration: reduce ? 0 : 0.28, ease: [0.22, 1, 0.36, 1] })
+    if (!commit) return
+    if (heldS < TAP_HINT_S) showHint('Hold to finish')
+    else if (!full) showHint('Hold until the ring closes')
+    else showHint('Let go on the circle to finish')
   }
 
   if (state === 'locked' || state === 'missed') {
@@ -107,11 +142,23 @@ export function QuestCheck({ state, category, title, reason, onToggle }: Props) 
       onPointerDown={(e) => {
         if (e.button !== 0) return
         swallowClick.current = interactive && !done
+        if (!interactive || done) return
+        e.currentTarget.setPointerCapture(e.pointerId) // keep hearing the pointer after it leaves the circle
         startHold()
       }}
-      onPointerUp={cancelHold}
-      onPointerLeave={cancelHold}
-      onPointerCancel={cancelHold}
+      onPointerMove={(e) => {
+        if (!holding.current || keyHolding.current) return
+        const over = isOver(e.currentTarget, e.clientX, e.clientY)
+        if (over === insideRef.current) return
+        insideRef.current = over
+        setOutside(!over)
+      }}
+      onPointerUp={(e) => {
+        if (keyHolding.current) return
+        insideRef.current = isOver(e.currentTarget, e.clientX, e.clientY)
+        endHold(true)
+      }}
+      onPointerCancel={() => !keyHolding.current && endHold(false)}
       onContextMenu={(e) => interactive && !done && e.preventDefault()} // long-press on touch shouldn't open a menu
       onKeyDown={(e) => {
         if (!isActivationKey(e) || !interactive) return
@@ -126,11 +173,11 @@ export function QuestCheck({ state, category, title, reason, onToggle }: Props) 
         if (!isActivationKey(e) || !keyHolding.current) return
         e.preventDefault()
         keyHolding.current = false
-        cancelHold()
+        endHold(true)
       }}
       onBlur={() => {
         keyHolding.current = false
-        cancelHold()
+        endHold(false)
       }}
       onClick={(e) => {
         if (!interactive) return
@@ -140,13 +187,14 @@ export function QuestCheck({ state, category, title, reason, onToggle }: Props) 
           return
         }
         if (done) onToggle()
-        else if (!fromPointer) complete() // screen-reader activation: there's no hold to perform
+        else if (!fromPointer) finish() // screen-reader activation: there's no hold to perform
       }}
-      animate={{ scale: pressing ? 0.9 : 1 }}
+      // pressed in while charging; springs back slightly once ready, as a cue to let go
+      animate={{ scale: pressing ? (armed ? 1.06 : 0.9) : 1 }}
       whileTap={interactive && done ? { scale: 0.86 } : undefined}
       transition={{ type: 'spring', stiffness: 600, damping: 22 }}
       style={{ WebkitTouchCallout: 'none' }}
-      className={`relative grid size-[22px] shrink-0 touch-manipulation select-none place-items-center rounded-full outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-surface ${interactive ? 'cursor-pointer' : 'cursor-default'}`}
+      className={`relative grid size-[22px] shrink-0 touch-none select-none place-items-center rounded-full outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-surface ${interactive ? 'cursor-pointer' : 'cursor-default'}`}
     >
       {/* ring */}
       <span
@@ -161,10 +209,16 @@ export function QuestCheck({ state, category, title, reason, onToggle }: Props) 
       {!done && (
         <motion.span aria-hidden className="absolute inset-0 rounded-full" style={{ backgroundColor: color, scale: chargeScale, opacity: chargeOpacity }} />
       )}
-      {/* hold progress, drawn just outside the ring from 12 o'clock */}
-      <svg aria-hidden viewBox="0 0 30 30" className="pointer-events-none absolute -inset-1 size-[30px] -rotate-90 overflow-visible">
+      {/* hold progress, drawn just outside the ring from 12 o'clock; fades while the pointer is off the circle */}
+      <motion.svg
+        aria-hidden
+        viewBox="0 0 30 30"
+        className="pointer-events-none absolute -inset-1 size-[30px] -rotate-90 overflow-visible"
+        animate={{ opacity: outside ? 0.3 : 1 }}
+        transition={{ duration: 0.15 }}
+      >
         <motion.circle cx="15" cy="15" r="13.5" fill="none" stroke={color} strokeWidth={2.25} strokeLinecap="round" style={{ pathLength: progress, opacity: ringOpacity }} />
-      </svg>
+      </motion.svg>
       {/* fill */}
       <motion.span
         aria-hidden
@@ -209,13 +263,13 @@ export function QuestCheck({ state, category, title, reason, onToggle }: Props) 
         />
       </svg>
       <span id={hintId} hidden>
-        Press and hold to complete
+        Press and hold until the ring closes, then release to complete
       </span>
-      {/* a quick tap explains itself instead of doing nothing */}
+      {/* a release that didn't count says why, instead of doing nothing */}
       <AnimatePresence>
-        {hint > 0 && (
+        {hint && (
           <motion.span
-            key={hint}
+            key={hint.n}
             aria-hidden
             className="pointer-events-none absolute bottom-full left-1/2 z-10 mb-2 -translate-x-1/2 whitespace-nowrap rounded-chip bg-ink px-2 py-0.5 text-[11.5px] font-medium text-surface shadow-card"
             initial={{ opacity: 0, y: 3 }}
@@ -223,7 +277,7 @@ export function QuestCheck({ state, category, title, reason, onToggle }: Props) 
             exit={{ opacity: 0, y: 2, transition: { duration: 0.15 } }}
             transition={{ duration: reduce ? 0 : 0.18, ease: [0.22, 1, 0.36, 1] }}
           >
-            Hold to finish
+            {hint.text}
           </motion.span>
         )}
       </AnimatePresence>

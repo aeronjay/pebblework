@@ -10,7 +10,7 @@ import type { QuestItem } from '../hooks'
 import { CATEGORY } from '../meta'
 import { useOpenToday } from './dayContext'
 import { describeQuest, dqRestLine, formatDay } from './describe'
-import { useCompleteFeedback } from './feedback'
+import { useCompleteFeedback, useReadyFeedback } from './feedback'
 import { isDueToday } from './lists'
 import { PlanLine, type RowPlan } from './PlanLine'
 import { QuestCheck, type CheckState } from './QuestCheck'
@@ -58,6 +58,7 @@ export function QuestRow({ item, todayKey, claimed, drag, onEdit, onMove, canMov
   const { quest } = item
   const toast = useToast()
   const feedback = useCompleteFeedback()
+  const readyFeedback = useReadyFeedback()
   const openToday = useOpenToday()
   const autoClaim = useAutoClaimSetting()
   const goal = useGoalOf(quest.identityId)
@@ -102,7 +103,7 @@ export function QuestRow({ item, todayKey, claimed, drag, onEdit, onMove, canMov
       >
         {drag?.handle}
         <div className="pt-px">
-          <QuestCheck state={state} category={quest.category} title={quest.title} reason={reason} onToggle={toggle} />
+          <QuestCheck state={state} category={quest.category} title={quest.title} reason={reason} onToggle={toggle} onReady={readyFeedback} />
         </div>
 
         <div className="min-w-0 flex-1">
