@@ -1,7 +1,7 @@
 import { addDays, format, parseISO } from 'date-fns'
 import { AlarmClock, AlignLeft, CalendarPlus, ChevronDown, ListChecks, Trash2, X } from 'lucide-react'
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
-import { useEffect, useId, useRef, useState, type RefObject } from 'react'
+import { useCallback, useEffect, useId, useRef, useState, type RefObject } from 'react'
 import { createPortal } from 'react-dom'
 import type { BoardColumn, Card, QuestCategory } from '../../../db/types'
 import { CATEGORY } from '../../quests/meta'
@@ -10,6 +10,7 @@ import { updateCard } from '../repo'
 import { trapTab, useModal } from './a11y'
 import { describeDue, subtaskProgress } from './model'
 import { SubtaskList } from './SubtaskList'
+import { DatePopover } from '../../tasks/DatePopover'
 
 interface Props {
   card: Card | undefined // undefined = closed
@@ -305,39 +306,28 @@ function useAutosize(ref: RefObject<HTMLTextAreaElement | null>, value: string) 
   }, [ref, value])
 }
 
-// The native date input stays hidden (its empty state reads "mm/dd/yyyy"); chips open its picker instead.
+// Chips set a reminder; "Pick a date" (or the set date) opens the app's month grid.
 function ReminderField({ id, value, todayKey, onChange }: { id: string; value?: string; todayKey: string; onChange: (v: string | null) => void }) {
-  const input = useRef<HTMLInputElement>(null)
+  const anchor = useRef<HTMLButtonElement>(null)
+  const [picking, setPicking] = useState(false)
   const inDays = (n: number) => format(addDays(parseISO(todayKey), n), 'yyyy-MM-dd')
-  const open = () => {
-    const el = input.current
-    if (!el) return
-    try {
-      el.showPicker()
-    } catch {
-      el.focus()
-    }
-  }
+  const open = () => setPicking((v) => !v)
+  const close = useCallback((refocus: boolean) => {
+    setPicking(false)
+    if (refocus) anchor.current?.focus()
+  }, [])
   const chip =
     'inline-flex h-8 items-center gap-1.5 rounded-[9px] px-2.5 text-[13px] font-medium outline-none transition focus-visible:ring-2 focus-visible:ring-ring'
   return (
     <div className="relative flex flex-wrap items-center gap-1.5">
-      <input
-        ref={input}
-        id={id}
-        type="date"
-        tabIndex={-1}
-        aria-hidden
-        value={value ?? ''}
-        // A half-cleared native date reports '' mid-edit; only the clear button removes a reminder.
-        onChange={(e) => e.target.value && onChange(e.target.value)}
-        className="pointer-events-none absolute bottom-0 left-0 h-px w-px opacity-0"
-      />
       {value ? (
         <>
           <button
+            ref={anchor}
             type="button"
             onClick={open}
+            aria-haspopup="dialog"
+            aria-expanded={picking}
             aria-labelledby={`${id}-label ${id}-value`}
             className={`${chip} border border-line-strong bg-surface text-ink hover:border-ring/50`}
           >
@@ -357,8 +347,11 @@ function ReminderField({ id, value, todayKey, onChange }: { id: string; value?: 
       ) : (
         <>
           <button
+            ref={anchor}
             type="button"
             onClick={open}
+            aria-haspopup="dialog"
+            aria-expanded={picking}
             aria-labelledby={`${id}-label`}
             aria-describedby={`${id}-none`}
             className={`${chip} border border-dashed border-line-strong text-muted hover:border-solid hover:bg-sunken/60 hover:text-ink`}
@@ -373,6 +366,21 @@ function ReminderField({ id, value, todayKey, onChange }: { id: string; value?: 
             Next week
           </button>
         </>
+      )}
+      {picking && (
+        <DatePopover
+          anchor={anchor}
+          value={value}
+          todayKey={todayKey}
+          label="Reminder date"
+          clearable={false}
+          align="start"
+          onClose={close}
+          onPick={(next) => {
+            if (next) onChange(next)
+            close(true)
+          }}
+        />
       )}
     </div>
   )

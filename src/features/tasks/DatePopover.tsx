@@ -1,5 +1,5 @@
 import { addDays, addMonths, eachDayOfInterval, format, isSameMonth, startOfMonth, startOfWeek } from 'date-fns'
-import { CalendarPlus, ChevronLeft, ChevronRight } from 'lucide-react'
+import { CalendarDays, CalendarPlus, ChevronLeft, ChevronRight } from 'lucide-react'
 import { motion, useReducedMotion } from 'motion/react'
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent, type RefObject } from 'react'
 import { createPortal } from 'react-dom'
@@ -24,12 +24,16 @@ interface PopoverProps {
   value?: string
   todayKey: string
   label: string
+  min?: string // days before this can't be picked
+  clearable?: boolean // offer "Clear" when a day is set (default true)
+  align?: 'start' | 'end' // which anchor edge the panel lines up with (default end)
   onPick: (value: string | null) => void
   onClose: (refocus: boolean) => void
 }
 
-// A month grid in the page's own style. Portaled and fixed so a scrolling list can't clip it.
-function DatePopover({ anchor, value, todayKey, label, onPick, onClose }: PopoverProps) {
+// A month grid in the page's own style, used for every date the app asks for. Portaled and fixed so a scrolling list
+// or a sheet can't clip it.
+export function DatePopover({ anchor, value, todayKey, label, min, clearable = true, align = 'end', onPick, onClose }: PopoverProps) {
   const reduce = useReducedMotion()
   const panel = useRef<HTMLDivElement>(null)
   const refocusDay = useRef(true)
@@ -48,7 +52,8 @@ function DatePopover({ anchor, value, todayKey, label, onPick, onClose }: Popove
       if (!a || !p) return
       const below = a.bottom + GAP
       const top = below + p.height > window.innerHeight - EDGE ? Math.max(EDGE, a.top - GAP - p.height) : below
-      setPos({ top, left: Math.max(EDGE, Math.min(a.right - p.width, window.innerWidth - p.width - EDGE)) })
+      const left = align === 'start' ? a.left : a.right - p.width
+      setPos({ top, left: Math.max(EDGE, Math.min(left, window.innerWidth - p.width - EDGE)) })
     }
     place()
     window.addEventListener('resize', place)
@@ -57,7 +62,7 @@ function DatePopover({ anchor, value, todayKey, label, onPick, onClose }: Popove
       window.removeEventListener('resize', place)
       window.removeEventListener('scroll', place, true)
     }
-  }, [anchor])
+  }, [anchor, align])
 
   useEffect(() => {
     function onDown(e: PointerEvent) {
@@ -126,6 +131,7 @@ function DatePopover({ anchor, value, todayKey, label, onPick, onClose }: Popove
           const key = dayKey(d)
           const selected = key === value
           const isToday = key === todayKey
+          const blocked = !!min && key < min
           const tone = selected ? 'font-semibold text-on-blaze' : !isSameMonth(d, cursor) || d < today ? 'text-faint' : 'text-ink'
           return (
             <button
@@ -136,14 +142,15 @@ function DatePopover({ anchor, value, todayKey, label, onPick, onClose }: Popove
               aria-pressed={selected}
               aria-current={isToday ? 'date' : undefined}
               aria-label={format(d, 'EEEE, MMMM d')}
-              onClick={() => onPick(key)}
-              className={`group relative grid h-9 place-items-center text-[13.5px] tabular-nums outline-none ${tone}`}
+              aria-disabled={blocked || undefined}
+              onClick={() => !blocked && onPick(key)}
+              className={`group relative grid h-9 place-items-center text-[13.5px] tabular-nums outline-none ${tone} ${blocked ? 'cursor-not-allowed opacity-45' : ''}`}
             >
               <span
                 aria-hidden
                 style={{ borderRadius: PEBBLE }}
                 className={`absolute inset-x-[3px] inset-y-[2px] transition-colors group-focus-visible:ring-2 group-focus-visible:ring-ring ${
-                  selected ? 'bg-blaze' : 'group-hover:bg-sunken'
+                  selected ? 'bg-blaze' : blocked ? '' : 'group-hover:bg-sunken'
                 }`}
               />
               <span className="relative">{format(d, 'd')}</span>
@@ -163,7 +170,7 @@ function DatePopover({ anchor, value, todayKey, label, onPick, onClose }: Popove
         <button type="button" className={quick} onClick={() => onPick(dayKey(addDays(today, 7)))}>
           Next week
         </button>
-        {value && (
+        {value && clearable && (
           <button type="button" className={`${quick} hover:text-danger-ink`} onClick={() => onPick(null)}>
             Clear
           </button>
@@ -217,6 +224,65 @@ export function DueControl({ value, todayKey, name, quiet, onChange }: DueContro
           value={value}
           todayKey={todayKey}
           label={`Deadline for ${name}`}
+          onClose={close}
+          onPick={(next) => {
+            onChange(next)
+            close(true)
+          }}
+        />
+      )}
+    </>
+  )
+}
+
+interface DateFieldProps {
+  id?: string
+  value?: string
+  todayKey: string
+  label: string // names the field for screen readers and titles the picker
+  placeholder?: string
+  min?: string
+  clearable?: boolean
+  disabled?: boolean
+  className?: string
+  onChange: (value: string | null) => void
+}
+
+// A form field that opens the same month grid, in place of the browser's own date input.
+export function DateField({ id, value, todayKey, label, placeholder = 'Pick a date', min, clearable, disabled, className = '', onChange }: DateFieldProps) {
+  const button = useRef<HTMLButtonElement>(null)
+  const [open, setOpen] = useState(false)
+  const close = useCallback((refocus: boolean) => {
+    setOpen(false)
+    if (refocus) button.current?.focus()
+  }, [])
+  const shown = value ? format(parseDayKey(value), 'EEE, MMM d, yyyy') : undefined
+
+  return (
+    <>
+      <button
+        ref={button}
+        id={id}
+        type="button"
+        disabled={disabled}
+        aria-haspopup="dialog"
+        aria-expanded={open}
+        aria-label={`${label}: ${shown ?? 'none'}. Change`}
+        onClick={() => setOpen((v) => !v)}
+        className={`inline-flex items-center gap-2 text-left tabular-nums ${className}`}
+      >
+        <CalendarDays aria-hidden className="size-4 shrink-0 text-muted" strokeWidth={1.75} />
+        <span className={`min-w-0 flex-1 truncate ${shown ? '' : 'text-faint'}`}>{shown ?? placeholder}</span>
+      </button>
+      {open && (
+        <DatePopover
+          anchor={button}
+          value={value}
+          todayKey={todayKey}
+          label={label}
+          min={min}
+          clearable={clearable}
+          align="start"
           onClose={close}
           onPick={(next) => {
             onChange(next)

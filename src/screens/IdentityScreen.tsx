@@ -29,6 +29,7 @@ import { useQuestToday, type QuestItem } from '../features/quests/hooks'
 import { CATEGORY, CATEGORY_ORDER } from '../features/quests/meta'
 import { QuestError } from '../features/quests/errors'
 import { ui } from '../ui/styles'
+import { DateField } from '../features/tasks/DatePopover'
 
 const UNDO_MS = 6000
 
@@ -510,13 +511,16 @@ function StatementForm({ kind: fixedKind, chooseKind = false, initial = '', init
             By when <span className="font-normal text-faint">(optional)</span>
           </label>
           <div className="flex items-center gap-2">
-            <input
+            <DateField
               id={`${id}-d`}
-              type="date"
+              value={targetDate || undefined}
+              todayKey={format(today, 'yyyy-MM-dd')}
               min={format(today, 'yyyy-MM-dd')}
-              value={targetDate}
-              onChange={(e) => setTargetDate(e.target.value)}
-              className={`${ui.input} w-auto text-[15px] tabular-nums`}
+              label="By when"
+              placeholder="No date"
+              clearable={false}
+              onChange={(v) => setTargetDate(v ?? '')}
+              className={`${ui.input} w-auto min-w-[180px] text-[15px]`}
             />
             {targetDate && (
               <button type="button" onClick={() => setTargetDate('')} className="rounded-lg px-2 py-1.5 text-[12.5px] font-medium text-faint transition hover:bg-sunken hover:text-ink outline-none focus-visible:ring-2 focus-visible:ring-ring">

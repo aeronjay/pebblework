@@ -13,6 +13,7 @@ import { createQuest, deleteQuest, updateQuest } from '../repo'
 import { formatDay, scheduleLabel } from './describe'
 import { neighborOfRow } from './focus'
 import { useToast } from './toastContext'
+import { DateField } from '../../tasks/DatePopover'
 
 // `project` presets the create sheet to a project (MQ/SQ with a kanban board).
 export type SheetTarget = { mode: 'create'; category: QuestCategory; project?: boolean } | { mode: 'edit'; item: QuestItem }
@@ -296,15 +297,16 @@ function Sheet({ target, todayKey, onClose }: { target: SheetTarget; todayKey: s
                       )
                     })}
                   </div>
-                  <input
+                  <DateField
                     id={`${titleId}-date`}
-                    type="date"
+                    value={dueDate || undefined}
+                    todayKey={todayKey}
                     min={todayKey}
-                    value={dueDate}
-                    data-empty={!dueDate || undefined}
+                    label={asProject ? 'Deadline' : 'Due date'}
+                    placeholder="No date"
                     disabled={!!dateLock}
-                    onChange={(e) => setDueDate(e.target.value)}
-                    className={`${field} w-auto min-w-[150px] flex-1 tabular-nums`}
+                    onChange={(v) => setDueDate(v ?? '')}
+                    className={`${field} w-auto min-w-[150px] flex-1`}
                   />
                 </div>
                 <p className="mt-1.5 flex items-center gap-1.5 text-[12px] text-muted">

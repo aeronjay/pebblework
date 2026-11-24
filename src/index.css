@@ -127,12 +127,4 @@ body {
   @apply bg-canvas font-sans text-ink antialiased;
 }
 
-/* An empty native date input reads "mm/dd/yyyy" in full ink; quiet it to placeholder color until a date is set. */
-input[type='date'][data-empty]::-webkit-datetime-edit {
-  color: var(--color-faint);
-}
-input[type='date']::-webkit-calendar-picker-indicator {
-  opacity: 0.55;
-  cursor: pointer;
-}
 

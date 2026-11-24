@@ -13,13 +13,14 @@ import {
 import { rectSortingStrategy, SortableContext, sortableKeyboardCoordinates, useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { GripVertical, Plus, X } from 'lucide-react'
-import { motion, useReducedMotion } from 'motion/react'
+import { useReducedMotion } from 'motion/react'
 import { useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import type { Task } from '../../db/types'
 import { arrayMove } from '../board/components/model'
 import { useToast } from '../quests/components/toastContext'
-import { CATEGORY } from '../quests/meta'
+import { useReadyFeedback } from '../quests/components/feedback'
+import { QuestCheck } from '../quests/components/QuestCheck'
 import { DueControl } from './DatePopover'
 import { createTask, deleteTask, reorderLooseEnds, toggleTask, updateTask } from './repo'
 
@@ -245,37 +246,8 @@ function titleClass(ticked: boolean) {
   return `ml-1.5 min-w-0 flex-1 py-1 text-[14px] leading-5 [overflow-wrap:anywhere] ${ticked ? 'text-faint line-through decoration-line-strong' : 'text-ink'}`
 }
 
+// Same press-hold-release as a quest's check, so finishing anything that drops a stone feels the same.
 export function TickBox({ ticked, label, onClick }: { ticked: boolean; label: string; onClick: () => void }) {
-  const reduce = useReducedMotion()
-  const color = CATEGORY.sq.color // Finishing one drops a side-quest stone.
-
-  return (
-    <button
-      type="button"
-      role="checkbox"
-      data-tick
-      aria-checked={ticked}
-      aria-label={label}
-      onClick={onClick}
-      className="relative mt-[5px] grid size-[18px] shrink-0 place-items-center rounded-full outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-surface"
-    >
-      <span
-        aria-hidden
-        className="absolute inset-0 rounded-full border-[1.5px] transition-colors duration-150"
-        style={{ borderColor: ticked ? color : 'var(--color-line-strong)', backgroundColor: ticked ? color : 'transparent' }}
-      />
-      <svg aria-hidden viewBox="0 0 24 24" className="relative size-3" fill="none">
-        <motion.path
-          d="M5.5 12.5l4.2 4.2L18.5 7.8"
-          stroke="rgb(12 13 16 / 0.86)"
-          strokeWidth={3.2}
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          initial={false}
-          animate={{ pathLength: ticked ? 1 : 0, opacity: ticked ? 1 : 0 }}
-          transition={reduce ? { duration: 0 } : { type: 'spring', stiffness: 320, damping: 24 }}
-        />
-      </svg>
-    </button>
-  )
+  const ready = useReadyFeedback()
+  return <QuestCheck size="sm" quiet state={ticked ? 'done' : 'open'} category="sq" title={label} onToggle={onClick} onReady={ready} className="mt-[5px]" />
 }

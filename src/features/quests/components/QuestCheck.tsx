@@ -14,6 +14,15 @@ interface Props {
   reason?: string // why it can't be toggled (locked / doneFixed / missed)
   onToggle: () => void
   onReady?: () => void // the ring just closed: letting go now (on the circle) completes
+  size?: 'md' | 'sm' // sm: loose ends, which sit in denser lists
+  quiet?: boolean // open ring in neutral line color instead of the category tint
+  className?: string
+}
+
+const SIZE = {
+  md: { box: 'size-[22px]', ring: 'size-[30px]', glyph: 'size-[14px]', hint: 'bottom-full left-1/2 mb-2 -translate-x-1/2' },
+  // Dense lists scroll and clip above the first row, so the hint sits beside the circle instead.
+  sm: { box: 'size-[18px]', ring: 'size-[26px]', glyph: 'size-3', hint: 'left-full top-1/2 ml-2 -translate-y-1/2' },
 }
 
 // Glyph on the category-colored fill: near-black reads at ≥ 7:1 on all three tints in both themes.
@@ -33,7 +42,7 @@ function isOver(el: HTMLElement, x: number, y: number): boolean {
   return Math.hypot(x - (r.left + r.width / 2), y - (r.top + r.height / 2)) <= el.offsetWidth / 2 + SLOP_PX
 }
 
-export function QuestCheck({ state, category, title, reason, onToggle, onReady }: Props) {
+export function QuestCheck({ state, category, title, reason, onToggle, onReady, size = 'md', quiet, className = '' }: Props) {
   const reduce = useReducedMotion()
   const hintId = useId()
   const [burst, setBurst] = useState(0)
@@ -55,6 +64,7 @@ export function QuestCheck({ state, category, title, reason, onToggle, onReady }
   const color = CATEGORY[category].color
   const done = state === 'done' || state === 'doneFixed'
   const interactive = state === 'open' || state === 'done'
+  const dims = SIZE[size]
 
   useEffect(() => () => charge.current?.stop(), [])
   useEffect(() => {
@@ -139,6 +149,7 @@ export function QuestCheck({ state, category, title, reason, onToggle, onReady }
       aria-disabled={!interactive || undefined}
       aria-label={reason && !interactive ? `${title}: ${reason}` : title}
       aria-describedby={interactive && !done ? hintId : undefined}
+      data-tick
       onPointerDown={(e) => {
         if (e.button !== 0) return
         swallowClick.current = interactive && !done
@@ -194,15 +205,15 @@ export function QuestCheck({ state, category, title, reason, onToggle, onReady }
       whileTap={interactive && done ? { scale: 0.86 } : undefined}
       transition={{ type: 'spring', stiffness: 600, damping: 22 }}
       style={{ WebkitTouchCallout: 'none' }}
-      className={`relative grid size-[22px] shrink-0 touch-none select-none place-items-center rounded-full outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-surface ${interactive ? 'cursor-pointer' : 'cursor-default'}`}
+      className={`relative grid ${dims.box} shrink-0 touch-none select-none place-items-center rounded-full outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-surface ${interactive ? 'cursor-pointer' : 'cursor-default'} ${className}`}
     >
       {/* ring */}
       <span
         aria-hidden
         className="absolute inset-0 rounded-full border-[1.5px] transition-[border-color,background-color] duration-200"
         style={{
-          borderColor: done ? color : `color-mix(in oklab, ${color} 78%, var(--color-ink))`,
-          backgroundColor: done ? 'transparent' : `color-mix(in oklab, ${color} 6%, transparent)`,
+          borderColor: done ? color : quiet ? 'var(--color-line-strong)' : `color-mix(in oklab, ${color} 78%, var(--color-ink))`,
+          backgroundColor: done || quiet ? 'transparent' : `color-mix(in oklab, ${color} 6%, transparent)`,
         }}
       />
       {/* charge: the fill swells while held, then pops to full on completion */}
@@ -213,7 +224,7 @@ export function QuestCheck({ state, category, title, reason, onToggle, onReady }
       <motion.svg
         aria-hidden
         viewBox="0 0 30 30"
-        className="pointer-events-none absolute -inset-1 size-[30px] -rotate-90 overflow-visible"
+        className={`pointer-events-none absolute -top-1 -left-1 ${dims.ring} -rotate-90 overflow-visible`}
         animate={{ opacity: outside ? 0.3 : 1 }}
         transition={{ duration: 0.15 }}
       >
@@ -244,7 +255,7 @@ export function QuestCheck({ state, category, title, reason, onToggle, onReady }
           />
         )}
       </AnimatePresence>
-      <svg aria-hidden viewBox="0 0 24 24" className="relative size-[14px]" fill="none">
+      <svg aria-hidden viewBox="0 0 24 24" className={`relative ${dims.glyph}`} fill="none">
         <motion.path
           d="M5.5 12.5l4.2 4.2L18.5 7.8"
           stroke={CHECK_INK}
@@ -271,7 +282,7 @@ export function QuestCheck({ state, category, title, reason, onToggle, onReady }
           <motion.span
             key={hint.n}
             aria-hidden
-            className="pointer-events-none absolute bottom-full left-1/2 z-10 mb-2 -translate-x-1/2 whitespace-nowrap rounded-chip bg-ink px-2 py-0.5 text-[11.5px] font-medium text-surface shadow-card"
+            className={`pointer-events-none absolute ${dims.hint} z-10 whitespace-nowrap rounded-chip bg-ink px-2 py-0.5 text-[11.5px] font-medium text-surface shadow-card`}
             initial={{ opacity: 0, y: 3 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 2, transition: { duration: 0.15 } }}
