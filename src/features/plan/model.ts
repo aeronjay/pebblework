@@ -2,7 +2,7 @@
 // day: detailed hour-by-hour plans tend to break by mid-morning, and a broken plan is easy to abandon wholesale.
 // Plans are made the evening before (tomorrow's plan is something to look forward to) or, failing that, in the morning.
 import { getDay } from 'date-fns'
-import type { DayPlan, PlanSlot, Task } from '../../db/types'
+import type { DayPlan, PlanSlot, PromiseItem, Task } from '../../db/types'
 import { addDaysToKey, isAssigned, isoToDayKey, parseDayKey } from '../quests/day'
 import type { QuestItem } from '../quests/hooks'
 import { isDueToday } from '../quests/components/lists'
@@ -142,6 +142,34 @@ export function needsReview(plan: DayPlan | undefined, todayKey: string): boolea
   return !!plan && plan.dayKey === todayKey && !plan.skipped && !plan.reviewedAt && isoToDayKey(plan.createdAt) < plan.dayKey
 }
 
+// A plan is a promise to yourself. Each promised thing is kept once it's finished that day; it's broken once it's
+// taken out of the plan, or when the day ends without it. Until then it's open.
+export type PromiseState = 'kept' | 'broken' | 'open'
+
+export interface PromiseLine {
+  key: string
+  title: string
+  state: PromiseState
+}
+
+export function promiseLines(promise: PromiseItem[] | undefined, kept: ReadonlySet<string>, dayOver: boolean): PromiseLine[] {
+  return (promise ?? []).map((p) => ({
+    key: p.key,
+    title: p.title,
+    state: kept.has(p.key) ? 'kept' : dayOver || p.brokenAt ? 'broken' : 'open',
+  }))
+}
+
+// Promised things still standing (not taken out): these can't leave the plan quietly.
+export function promisedKeys(plan: DayPlan | undefined): Set<string> {
+  return new Set((plan?.promise ?? []).filter((p) => !p.brokenAt).map((p) => p.key))
+}
+
+// What's finished today, by slot key (quests and projects as isHandled sees them, loose ends once completed).
+export function handledKeys(items: QuestItem[], tasks: Task[] = []): Set<string> {
+  return new Set([...items.filter(isHandled).map((i) => `q:${i.quest.id}`), ...tasks.filter((t) => t.completedAt).map((t) => `t:${t.id}`)])
+}
+
 // Slots whose quest or loose end still exists (a deleted one drops out quietly).
 export function liveSlots(plan: DayPlan | undefined, items: QuestItem[], tasks: Task[] = []): PlanSlot[] {
   if (!plan) return []
@@ -152,7 +180,7 @@ export function liveSlots(plan: DayPlan | undefined, items: QuestItem[], tasks: 
 
 // The first planned quest or loose end not done yet: what to start next.
 export function nextSlot(slots: PlanSlot[], items: QuestItem[], tasks: Task[] = []): PlanSlot | undefined {
-  const done = new Set([...items.filter(isHandled).map((i) => `q:${i.quest.id}`), ...tasks.filter((t) => t.completedAt).map((t) => `t:${t.id}`)])
+  const done = handledKeys(items, tasks)
   return slots.find((s) => !done.has(slotKey(s)))
 }
 

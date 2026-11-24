@@ -106,6 +106,7 @@ const BACK_LABEL: Record<Route['name'], string> = {
   projects: 'Projects',
   notes: 'Notes',
   review: 'Review',
+  promises: 'Promises',
   shelf: 'Shelf',
   insights: 'Insights',
   identity: 'Identity',

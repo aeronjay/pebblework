@@ -2,7 +2,7 @@ import { format } from 'date-fns'
 import { downloadPlanIcs } from '../reminders/ics'
 import { CornerDownRight, Plus, X } from 'lucide-react'
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
-import { useId, useRef, useState, type FormEvent, type ReactNode } from 'react'
+import { useEffect, useId, useRef, useState, type FormEvent, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import type { DayPlan, PlanSlot, Task } from '../../db/types'
 import { trapTab, useModal } from '../board/components/a11y'
@@ -22,6 +22,7 @@ import {
   planGroup,
   planGroups,
   planKind,
+  promisedKeys,
   slotKey,
   suggestTime,
   taskCandidates,
@@ -106,6 +107,13 @@ function Sheet({ todayKey, items, tasks, plans, day: initialDay, onClose }: Prop
   const setPicks = (list: Choice[]) => setDrafts((d) => ({ ...d, [day]: list }))
   const [saving, setSaving] = useState(false)
   const changed = (d: PlanDay) => !sameDraft(drafts[d], fromPlan(plans[d], entries))
+  // Promised things can't leave the plan quietly: the remove button asks first (`breaking`), since taking one out breaks
+  // the promise. Saving anything not promised yet is a new promise, made by holding the button, not a quick tap.
+  const promised = promisedKeys(plan)
+  const promisedToday = promisedKeys(plans.today)
+  const [breaking, setBreaking] = useState<string | null>(null)
+  const savedDays = () => DAYS.filter((d) => d === day || changed(d))
+  const needsPromise = savedDays().some((d) => drafts[d].some((p) => !promisedKeys(plans[d]).has(p.key)))
 
   const picked = new Set(picks.map((p) => p.key))
   const full = picks.length >= MAX_PLAN_SLOTS
@@ -132,6 +140,7 @@ function Sheet({ todayKey, items, tasks, plans, day: initialDay, onClose }: Prop
   }
 
   function remove(key: string) {
+    setBreaking(null)
     setPicks(picks.filter((p) => p.key !== key))
   }
 
@@ -139,12 +148,13 @@ function Sheet({ todayKey, items, tasks, plans, day: initialDay, onClose }: Prop
     setPicks(picks.map((p) => (p.key === key ? { ...p, ...patch } : p)))
   }
 
-  async function save(e?: FormEvent) {
+  async function save(e?: FormEvent, promise = false) {
     e?.preventDefault()
     if (saving) return
     // The day on screen always saves (an empty plan is a plan: "nothing needs a time"); the other only if it changed.
-    const days = DAYS.filter((d) => d === day || changed(d))
+    const days = savedDays()
     if (days.some((d) => drafts[d].some((p) => !isValidTime(p.time)))) return toast.show('Give each planned quest a start time.')
+    if (needsPromise && !promise) return toast.show('Press and hold “I promise” to make it.')
     setSaving(true)
     const ok = await toast.run(async () => {
       for (const d of days) {
@@ -164,7 +174,7 @@ function Sheet({ todayKey, items, tasks, plans, day: initialDay, onClose }: Prop
     const events = drafts[day].flatMap((p) => (map.has(p.key) ? [{ key: p.key, time: p.time, title: map.get(p.key)!.title, ifThen: p.ifThen.trim() || undefined }] : []))
     if (events.length) {
       const key = planDayKey(todayKey, day)
-      toast.show(`Planned. Pebblework will ring at ${events.length === 1 ? 'that time' : 'each time'} while it’s open.`, 'info', { label: 'Add to calendar', onClick: () => downloadPlanIcs(key, events) })
+      toast.show(`${promise ? 'Promised' : 'Saved'}. Pebblework will ring at ${events.length === 1 ? 'that time' : 'each time'} while it’s open.`, 'info', { label: 'Add to calendar', onClick: () => downloadPlanIcs(key, events) })
     }
   }
 
@@ -220,11 +230,11 @@ function Sheet({ todayKey, items, tasks, plans, day: initialDay, onClose }: Prop
                 {day === 'today' ? 'Plan today' : 'Plan tomorrow'}
               </h2>
               <p id={descId} className="mt-1.5 max-w-[46ch] text-[13.5px] leading-relaxed text-muted">
-                {day === 'today' && plan && isoToDayKey(plan.createdAt) < plan.dayKey
-                  ? 'You made this plan last night. Keep what still fits, move a time, or swap something out.'
+                {day === 'today' && plan?.promise?.length && isoToDayKey(plan.promisedAt ?? plan.createdAt) < plan.dayKey
+                  ? 'You promised this last night. Times can move; what you promised stays until it’s done.'
                   : day === 'today'
-                  ? `Pick up to ${MAX_PLAN_SLOTS} things that matter most, quests or loose ends, and decide when you’ll start each one.`
-                  : `Pick up to ${MAX_PLAN_SLOTS} things to look forward to tomorrow and decide when you’ll start each one. You can still change it in the morning.`}
+                  ? `Pick up to ${MAX_PLAN_SLOTS} things you’ll do today, quests or loose ends, and when you’ll start each one. Saving it is a promise to yourself.`
+                  : `Pick up to ${MAX_PLAN_SLOTS} things you’ll do tomorrow and when you’ll start each one. Saving it is a promise to yourself.`}
               </p>
               <div role="radiogroup" aria-label="Which day" className="mt-3 inline-flex rounded-full bg-sunken p-0.5">
                 {DAYS.map((d) => (
@@ -275,6 +285,9 @@ function Sheet({ todayKey, items, tasks, plans, day: initialDay, onClose }: Prop
                 <AnimatePresence initial={false}>
                   {picks.map((p) => {
                     const entry = entries.get(p.key)!
+                    // Planning tomorrow a quest promised for today moves it off today's plan: say what that costs.
+                    const item = p.key.startsWith('q:') ? items.find((i) => `q:${i.quest.id}` === p.key) : undefined
+                    const breaksToday = day === 'tomorrow' && promisedToday.has(p.key) && !!item && planGroup(item, ahead) === 'leftover'
                     return (
                       <motion.li
                         key={p.key}
@@ -301,17 +314,46 @@ function Sheet({ todayKey, items, tasks, plans, day: initialDay, onClose }: Prop
                             <span className="mt-0.5 grid size-[18px] shrink-0 place-items-center">{entry.icon}</span>
                             <div className="min-w-0 flex-1">
                               <p className="text-[14.5px] leading-snug font-medium break-words text-ink">{entry.title}</p>
-                              {entry.note && <p className="mt-0.5 text-[12px] text-muted">{entry.note}</p>}
+                              {promised.has(p.key) ? (
+                                <p className="mt-0.5 text-[12px] font-medium text-ink">Promised</p>
+                              ) : (
+                                (breaksToday || entry.note) && (
+                                  <p className="mt-0.5 text-[12px] text-muted">{breaksToday ? `${entry.note}. Breaks today’s promise.` : entry.note}</p>
+                                )
+                              )}
                             </div>
                             <button
                               type="button"
-                              onClick={() => remove(p.key)}
+                              onClick={() => (promised.has(p.key) ? setBreaking(p.key) : remove(p.key))}
+                              aria-expanded={promised.has(p.key) ? breaking === p.key : undefined}
                               aria-label={`Remove ${entry.title} from the plan`}
                               className="-mt-1 -mr-1 grid size-7 shrink-0 place-items-center rounded-full text-faint transition hover:bg-sunken hover:text-ink outline-none focus-visible:ring-2 focus-visible:ring-ring"
                             >
                               <X aria-hidden className="size-3.5" strokeWidth={2} />
                             </button>
                           </div>
+                          {breaking === p.key && (
+                            <div role="group" aria-label={`Break your promise to do ${entry.title}?`} className="mt-2 rounded-control bg-sunken px-3 py-2.5">
+                              <p className="text-[13px] leading-snug text-ink">You promised yourself this. Taking it out breaks that promise, and it stays on your record.</p>
+                              <div className="mt-2 flex justify-end gap-1">
+                                <button
+                                  type="button"
+                                  autoFocus
+                                  onClick={() => setBreaking(null)}
+                                  className="rounded-control px-3 py-1.5 text-[13px] font-semibold text-ink transition hover:bg-elevated outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                                >
+                                  Keep it
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => remove(p.key)}
+                                  className="rounded-control px-3 py-1.5 text-[13px] font-medium text-muted transition hover:bg-elevated hover:text-ink outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                                >
+                                  Break it
+                                </button>
+                              </div>
+                            </div>
+                          )}
                           <label className="mt-2 flex items-center gap-1.5 rounded-control border border-dashed border-line-strong px-2 transition focus-within:border-solid focus-within:border-ring focus-within:ring-2 focus-within:ring-ring/30">
                             <CornerDownRight aria-hidden className="size-3.5 shrink-0 text-faint" strokeWidth={1.75} />
                             <span className="shrink-0 text-[12.5px] font-medium text-muted">If it slips,</span>
@@ -402,12 +444,14 @@ function Sheet({ todayKey, items, tasks, plans, day: initialDay, onClose }: Prop
           </div>
 
           <footer className="flex items-center gap-2 border-t border-line bg-surface/60 px-5 py-3.5 pb-[max(0.875rem,env(safe-area-inset-bottom))] sm:px-7">
-            {day === 'tomorrow' ? (
+            {needsPromise ? (
+              <span className="mr-auto hidden text-[12.5px] text-muted sm:inline">A promise to yourself. Only make it if you mean it.</span>
+            ) : day === 'tomorrow' ? (
               <span className="mr-auto hidden text-[12.5px] text-muted sm:inline">
-                {plan ? 'Changing the plan is part of planning.' : 'Sleep on it. It’ll be here in the morning.'}
+                {promised.size ? 'Times can move. What you promised stays.' : 'Sleep on it. It’ll be here in the morning.'}
               </span>
             ) : plan && !plan.skipped ? (
-              <span className="mr-auto hidden text-[12.5px] text-muted sm:inline">Changing the plan is part of planning.</span>
+              <span className="mr-auto hidden text-[12.5px] text-muted sm:inline">{promised.size ? 'Times can move. What you promised stays.' : 'Moving a time is part of planning.'}</span>
             ) : (
               <button
                 type="button"
@@ -424,17 +468,86 @@ function Sheet({ todayKey, items, tasks, plans, day: initialDay, onClose }: Prop
             >
               Cancel
             </button>
-            <button
-              type="submit"
-              disabled={saving}
-              className="rounded-control bg-ink px-4 py-2 text-[13px] font-semibold text-canvas shadow-card transition hover:opacity-90 active:scale-[.98] disabled:opacity-50 outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-elevated"
-            >
-              {picks.length === 0 && plan?.slots.length ? 'Clear plan' : 'Save plan'}
-            </button>
+            {needsPromise ? (
+              <HoldToPromise disabled={saving} onDone={() => void save(undefined, true)} />
+            ) : (
+              <button
+                type="submit"
+                disabled={saving}
+                className="rounded-control bg-ink px-4 py-2 text-[13px] font-semibold text-canvas shadow-card transition hover:opacity-90 active:scale-[.98] disabled:opacity-50 outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-elevated"
+              >
+                {picks.length === 0 && plan?.slots.length ? 'Clear plan' : 'Save plan'}
+              </button>
+            )}
           </footer>
         </form>
       </motion.div>
     </div>
+  )
+}
+
+const HOLD_MS = 1200
+
+// "I promise": made by pressing and holding (pointer, or Space / Enter from the keyboard), not a quick tap. Writing a
+// plan on paper takes a moment; so does this. Letting go early cancels.
+function HoldToPromise({ disabled, onDone }: { disabled: boolean; onDone: () => void }) {
+  const [holding, setHolding] = useState(false)
+  const timer = useRef<number | undefined>(undefined)
+  const hintId = useId()
+  useEffect(() => () => window.clearTimeout(timer.current), [])
+
+  function start() {
+    if (disabled || timer.current !== undefined) return
+    setHolding(true)
+    timer.current = window.setTimeout(() => {
+      timer.current = undefined
+      setHolding(false)
+      onDone()
+    }, HOLD_MS)
+  }
+
+  function stop() {
+    window.clearTimeout(timer.current)
+    timer.current = undefined
+    setHolding(false)
+  }
+
+  const isHoldKey = (key: string) => key === ' ' || key === 'Enter'
+  return (
+    <>
+      <span id={hintId} className="sr-only">
+        Press and hold to promise.
+      </span>
+      <button
+        type="button"
+        disabled={disabled}
+        aria-describedby={hintId}
+        onPointerDown={(e) => {
+          if (e.button !== 0) return
+          e.currentTarget.setPointerCapture(e.pointerId)
+          start()
+        }}
+        onPointerUp={stop}
+        onPointerCancel={stop}
+        onLostPointerCapture={stop}
+        onKeyDown={(e) => {
+          if (!isHoldKey(e.key) || e.metaKey || e.ctrlKey) return
+          e.preventDefault()
+          if (!e.repeat) start()
+        }}
+        onKeyUp={(e) => isHoldKey(e.key) && stop()}
+        onBlur={stop}
+        onContextMenu={(e) => e.preventDefault()}
+        className="relative touch-none overflow-hidden rounded-control bg-ink px-4 py-2 text-[13px] font-semibold text-canvas shadow-card transition select-none hover:opacity-90 disabled:opacity-50 outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-elevated"
+      >
+        <span
+          aria-hidden
+          className="absolute inset-y-0 left-0 bg-canvas/25"
+          style={{ width: holding ? '100%' : '0%', transition: holding ? `width ${HOLD_MS}ms linear` : 'width 150ms ease-out' }}
+        />
+        <span className="relative">{holding ? 'Keep holding…' : 'Hold: I promise'}</span>
+      </button>
+    </>
   )
 }
 

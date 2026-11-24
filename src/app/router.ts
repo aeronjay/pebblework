@@ -7,6 +7,7 @@ export type Route =
   | { name: 'projects' }
   | { name: 'notes' }
   | { name: 'review' }
+  | { name: 'promises' }
   | { name: 'shelf' }
   | { name: 'insights' }
   | { name: 'identity' }
@@ -19,6 +20,7 @@ export function parseHash(hash: string): Route {
   if (parts[0] === 'projects') return { name: 'projects' }
   if (parts[0] === 'notes') return { name: 'notes' }
   if (parts[0] === 'review') return { name: 'review' }
+  if (parts[0] === 'promises') return { name: 'promises' }
   if (parts[0] === 'shelf') return { name: 'shelf' }
   if (parts[0] === 'insights') return { name: 'insights' }
   if (parts[0] === 'identity') return { name: 'identity' }
@@ -33,6 +35,7 @@ export const href = {
   projects: '#/projects',
   notes: '#/notes',
   review: '#/review',
+  promises: '#/promises',
   shelf: '#/shelf',
   insights: '#/insights',
   identity: '#/identity',

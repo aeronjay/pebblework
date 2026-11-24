@@ -1,7 +1,9 @@
 // A day's plan, one row per day (today's, or tomorrow's made the evening before). Plans never touch completions or stones: planning is not the work, so it earns nothing.
+// Saving a plan is a promise to yourself, like writing tomorrow on a sheet of paper. Times can move (that's what the
+// alarm and "Move to" are for), but taking a promised thing out of the plan breaks the promise, and that's recorded.
 import { db, newMeta, touch, type MarbleDB } from '../../db/db'
-import type { DayPlan, PlanSlot } from '../../db/types'
-import { addDaysToKey, dayKey, isMissed, isProject, isQuestCompletion } from '../quests/day'
+import type { DayPlan, PlanSlot, PromiseItem } from '../../db/types'
+import { addDaysToKey, dayKey, isMissed, isProject, isQuestCompletion, isoToDayKey } from '../quests/day'
 import { QuestError } from '../quests/errors'
 import { doItToday, updateQuest } from '../quests/repo'
 import { IF_THEN_MAX, MAX_PLAN_SLOTS, isValidTime, slotKey, sortSlots } from './model'
@@ -27,7 +29,23 @@ function cleanSlots(slots: PlanSlot[]): PlanSlot[] {
   )
 }
 
-async function put(key: string, patch: Pick<DayPlan, 'slots'> & { skipped?: boolean }, now: Date, database: MarbleDB): Promise<void> {
+// The day's promise after a change: `added` (just promised) join it, or come back if they'd been taken out; anything
+// promised that's no longer in `slots` is broken now.
+export function nextPromise(cur: PromiseItem[] | undefined, slots: PlanSlot[], added: PromiseItem[], iso: string): PromiseItem[] {
+  const list = (cur ?? []).map((p) => ({ ...p }))
+  for (const a of added) {
+    const had = list.find((p) => p.key === a.key)
+    if (!had) list.push({ key: a.key, title: a.title })
+    else {
+      had.title = a.title
+      delete had.brokenAt
+    }
+  }
+  const live = new Set(slots.map(slotKey))
+  return list.map((p) => (live.has(p.key) || p.brokenAt ? p : { ...p, brokenAt: iso }))
+}
+
+async function put(key: string, patch: Pick<DayPlan, 'slots'> & { skipped?: boolean; promise?: PromiseItem[] }, now: Date, database: MarbleDB): Promise<void> {
   const iso = now.toISOString()
   await database.transaction('rw', database.dayPlans, async () => {
     const cur = await database.dayPlans.get(key)
@@ -35,6 +53,10 @@ async function put(key: string, patch: Pick<DayPlan, 'slots'> & { skipped?: bool
     delete next.deletedAt
     if (patch.skipped) next.skipped = true
     else delete next.skipped
+    const promise = nextPromise(cur?.deletedAt ? undefined : cur?.promise, patch.slots, patch.promise ?? [], iso)
+    if (promise.length) next.promise = promise
+    else delete next.promise
+    if (patch.promise?.length) next.promisedAt ??= iso
     if (dayKey(now) === key) next.reviewedAt ??= iso // changing a plan on its day means it's been looked at
     await database.dayPlans.put(next)
   })
@@ -50,8 +72,8 @@ export async function reviewPlan(key: string, now: Date = new Date(), database: 
   })
 }
 
-// Replaces the day's plan. Quests and loose ends must be live; an empty list is a valid plan ("nothing needs a time
-// today").
+// Replaces the day's plan and promises everything on it. Quests and loose ends must be live; an empty list is a valid
+// plan ("nothing needs a time today"). Anything promised earlier and left out is broken.
 export async function savePlan(key: string, slots: PlanSlot[], now: Date = new Date(), database: MarbleDB = db): Promise<void> {
   const clean = cleanSlots(slots)
   const [quests, tasks] = await Promise.all([
@@ -59,7 +81,23 @@ export async function savePlan(key: string, slots: PlanSlot[], now: Date = new D
     database.tasks.bulkGet(clean.flatMap((s) => (s.taskId ? [s.taskId] : []))),
   ])
   if ([...quests, ...tasks].some((x) => !x || x.deletedAt)) throw new QuestError('One of those no longer exists.')
-  await put(key, { slots: clean }, now, database)
+  const titles = new Map<string, string>([...quests.map((q) => [`q:${q!.id}`, q!.title] as const), ...tasks.map((t) => [`t:${t!.id}`, t!.title] as const)])
+  await put(key, { slots: clean, promise: clean.map((s) => ({ key: slotKey(s), title: titles.get(slotKey(s)) ?? '' })) }, now, database)
+}
+
+// Which promised things were finished on day `key`: a quest with any completion that day (a project: any work on its
+// board), a loose end finished on or before it.
+export async function keptKeys(key: string, promise: PromiseItem[], database: MarbleDB = db): Promise<Set<string>> {
+  const questIds = promise.flatMap((p) => (p.key.startsWith('q:') ? [p.key.slice(2)] : []))
+  const taskIds = promise.flatMap((p) => (p.key.startsWith('t:') ? [p.key.slice(2)] : []))
+  const [completions, tasks] = await Promise.all([
+    questIds.length ? database.questCompletions.where('questId').anyOf(questIds).toArray() : [],
+    database.tasks.bulkGet(taskIds),
+  ])
+  return new Set([
+    ...completions.filter((c) => !c.deletedAt && c.dayKey === key).map((c) => `q:${c.questId}`),
+    ...tasks.flatMap((t) => (t?.completedAt && isoToDayKey(t.completedAt) <= key ? [`t:${t.id}`] : [])),
+  ])
 }
 
 // "Not today": the prompt stays quiet for the rest of the day.
@@ -67,8 +105,8 @@ export async function skipPlan(key: string, now: Date = new Date(), database: Ma
   await put(key, { slots: [], skipped: true }, now, database)
 }
 
-// Moves one planned slot (by slotKey) to a new time. Re-planning is normal, not a failure, so it's one tap and leaves no
-// trace.
+// Moves one planned slot (by slotKey) to a new time. Moving a time is normal, not a failure, so it's one tap and leaves
+// no trace (the promise is what you'll do that day, not the minute).
 export async function retimeSlot(key: string, slot: string, time: string, now: Date = new Date(), database: MarbleDB = db): Promise<void> {
   if (!isValidTime(time)) throw new QuestError('That isn’t a valid time.')
   const cur = await getPlan(key, database)
@@ -76,6 +114,7 @@ export async function retimeSlot(key: string, slot: string, time: string, now: D
   await put(key, { slots: sortSlots(cur.slots.map((s) => (slotKey(s) === slot ? { ...s, time } : s))) }, now, database)
 }
 
+// Takes one slot out of the plan. If it was promised, that breaks the promise.
 export async function unplanSlot(key: string, slot: string, now: Date = new Date(), database: MarbleDB = db): Promise<void> {
   const cur = await getPlan(key, database)
   if (!cur || !cur.slots.some((s) => slotKey(s) === slot)) return

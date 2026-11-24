@@ -10,7 +10,8 @@ import { GoalsContext } from '../features/identity/goalContext'
 import { GoalsStrip } from '../features/identity/GoalsStrip'
 import { useIdentityViews } from '../features/identity/hooks'
 import { NextCard } from '../features/next/NextCard'
-import { useNotTonight, useNow, usePlan } from '../features/plan/hooks'
+import { useNotTonight, useNow, usePlan, usePromiseRecord, usePromiseSeen } from '../features/plan/hooks'
+import { PromiseCard } from '../features/plan/PromiseCard'
 import { freshStart, isEvening, isHandled, liveSlots, needsReview, planCandidates, planDayKey, taskCandidates, type PlanDay } from '../features/plan/model'
 import { PlanPreview, PlanPrompt, type PreviewLine } from '../features/plan/PlanPrompt'
 import { reviewPlan, skipPlan } from '../features/plan/repo'
@@ -90,6 +91,10 @@ function Home() {
   const tomorrowLines = evening && quests && planState?.tomorrow ? linesOf(planState.tomorrow) : null
   // The morning after: last night's plan, shown for a quick look until "Looks good" or any change to it.
   const review = !evening && !!quests && needsReview(plan, todayKey) ? linesOf(plan!) : null
+  // The morning after a promise: how it went (until "OK").
+  const promises = usePromiseRecord(todayKey)
+  const [promiseSeen, dismissPromise] = usePromiseSeen(todayKey)
+  const showPromise = !evening && !promiseSeen && !!promises?.yesterday?.length
   const headerDay: PlanDay = evening ? 'tomorrow' : 'today'
   const headerPlanned = evening ? !!tomorrowLines?.length : slots.length > 0
 
@@ -165,6 +170,7 @@ function Home() {
                 onConfirm={() => void toast.run(() => reviewPlan(todayKey))}
               />
             )}
+            {showPromise && <PromiseCard record={promises!} onDismiss={dismissPromise} />}
             <BackupNudge />
             <GoalsStrip views={goalViews} />
           </div>

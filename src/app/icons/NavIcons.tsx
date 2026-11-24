@@ -112,6 +112,17 @@ export function ShelfIcon(props: NavIconProps) {
   )
 }
 
+// Promises: a sheet of paper with tomorrow written on it, the first line checked off.
+export function PromisesIcon(props: NavIconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M14.5 3.5H7A1.5 1.5 0 0 0 5.5 5v14A1.5 1.5 0 0 0 7 20.5h10a1.5 1.5 0 0 0 1.5-1.5V7.5z" />
+      <path d="M14.5 3.5v4h4" />
+      <path d="m8.5 11.6 1.2 1.2 2.2-2.4M13.5 12h2M8.5 16h7" />
+    </Svg>
+  )
+}
+
 // Insights: a trail climbing a ridge, the sun over it.
 export function InsightsIcon(props: NavIconProps) {
   return (

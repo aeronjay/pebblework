@@ -249,13 +249,24 @@ export interface PlanSlot {
   ifThen?: string // "If it slips, I'll …"
 }
 
+// One thing promised in a day's plan. Kept = finished on that day; anything else is broken once the day is over.
+// `title` is copied so the record survives the quest or loose end being deleted.
+export interface PromiseItem {
+  key: string // the slot's key: "q:<id>" / "t:<id>"
+  title: string
+  brokenAt?: string // taken out of the plan after it was promised
+}
+
 // A day's plan: a few quests with start times, not the whole day. `skipped` = "Not today" (the prompt stays quiet).
 // Usually made the evening before; `reviewedAt` = looked over (or changed) on the day itself.
+// Saving a plan promises what's on it (`promise`). Times can move freely; taking a promised thing out breaks it.
 export interface DayPlan extends Meta {
   dayKey: string // primary key
   slots: PlanSlot[] // at most MAX_PLAN_SLOTS, sorted by time
   skipped?: boolean
   reviewedAt?: string
+  promisedAt?: string // first promise made for this day
+  promise?: PromiseItem[] // everything ever promised for this day, including what was taken out since
 }
 
 // Free-form note. `questId` optionally links it to a project quest; the link survives the quest's deletion.

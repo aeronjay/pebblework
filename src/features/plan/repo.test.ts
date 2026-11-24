@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest'
 import { freshDb } from '../../test/db'
 import { completeQuest, createQuest, deleteQuest } from '../quests/repo'
-import { createTask, deleteTask } from '../tasks/repo'
-import { needsReview } from './model'
-import { getPlan, planDay, retimeSlot, reviewPlan, savePlan, skipPlan, unplanSlot } from './repo'
+import { createTask, deleteTask, toggleTask } from '../tasks/repo'
+import { needsReview, promiseLines } from './model'
+import { getPlan, keptKeys, planDay, retimeSlot, reviewPlan, savePlan, skipPlan, unplanSlot } from './repo'
 
 const now = new Date(2026, 10, 4, 8)
 const earlier = new Date(2026, 10, 1, 8)
@@ -177,5 +177,72 @@ describe('plan repo', () => {
     await expect(savePlan(KEY, [{ taskId: t, time: '09:00' }, { taskId: t, time: '10:00' }], now, d)).rejects.toThrow()
     await deleteTask(t, now, d)
     await expect(savePlan(KEY, [{ taskId: t, time: '09:00' }], now, d)).rejects.toThrow()
+  })
+
+  describe('the promise', () => {
+    it('saving promises what is on the plan; moving a time keeps the promise', async () => {
+      const d = freshDb()
+      const a = await createQuest({ category: 'dq', title: 'Walk' }, now, d)
+      const t = await createTask({ title: 'Call the bank' }, now, d)
+      await savePlan(KEY, [{ questId: a, time: '09:00' }, { taskId: t, time: '10:00' }], now, d)
+      const plan = await getPlan(KEY, d)
+      expect(plan?.promisedAt).toBe(now.toISOString())
+      expect(plan?.promise).toEqual([
+        { key: `q:${a}`, title: 'Walk' },
+        { key: `t:${t}`, title: 'Call the bank' },
+      ])
+      await retimeSlot(KEY, `q:${a}`, '11:00', now, d)
+      expect((await getPlan(KEY, d))?.promise?.every((p) => !p.brokenAt)).toBe(true)
+    })
+
+    it('taking a promised thing out breaks it, whichever way it leaves', async () => {
+      const d = freshDb()
+      const [a, b, c] = await Promise.all(['A', 'B', 'C'].map((title) => createQuest({ category: 'dq', title }, now, d)))
+      await savePlan(KEY, [{ questId: a, time: '09:00' }, { questId: b, time: '10:00' }, { questId: c, time: '11:00' }], now, d)
+      const later = new Date(2026, 10, 4, 12)
+      await unplanSlot(KEY, `q:${a}`, later, d)
+      await savePlan(KEY, [{ questId: c, time: '11:00' }], later, d) // b left out
+      const promise = (await getPlan(KEY, d))?.promise
+      expect(promise?.find((p) => p.key === `q:${a}`)?.brokenAt).toBe(later.toISOString())
+      expect(promise?.find((p) => p.key === `q:${b}`)?.brokenAt).toBe(later.toISOString())
+      expect(promise?.find((p) => p.key === `q:${c}`)?.brokenAt).toBeUndefined()
+      // Promising it again takes it back
+      await savePlan(KEY, [{ questId: a, time: '13:00' }, { questId: c, time: '11:00' }], later, d)
+      expect((await getPlan(KEY, d))?.promise?.find((p) => p.key === `q:${a}`)?.brokenAt).toBeUndefined()
+    })
+
+    it('moving a quest promised today onto tomorrow breaks today’s promise', async () => {
+      const d = freshDb()
+      const report = await createQuest({ category: 'mq', title: 'Report', dueDate: KEY }, now, d)
+      await planDay(KEY, [{ questId: report, time: '09:00' }], now, d)
+      const evening = new Date(2026, 10, 4, 20)
+      await planDay('2026-11-05', [{ questId: report, time: '09:00' }], evening, d)
+      expect((await getPlan(KEY, d))?.promise?.[0].brokenAt).toBe(evening.toISOString())
+      expect((await getPlan('2026-11-05', d))?.promise?.[0]).toEqual({ key: `q:${report}`, title: 'Report' })
+    })
+
+    it('an empty plan promises nothing', async () => {
+      const d = freshDb()
+      await savePlan(KEY, [], now, d)
+      const plan = await getPlan(KEY, d)
+      expect(plan?.promise).toBeUndefined()
+      expect(plan?.promisedAt).toBeUndefined()
+    })
+
+    it('kept = finished that day; anything else is broken once the day is over', async () => {
+      const d = freshDb()
+      const [a, b] = await Promise.all(['A', 'B'].map((title) => createQuest({ category: 'dq', title }, now, d)))
+      const t = await createTask({ title: 'Call the bank' }, now, d)
+      await savePlan(KEY, [{ questId: a, time: '09:00' }, { questId: b, time: '10:00' }, { taskId: t, time: '11:00' }], now, d)
+      await completeQuest(a, now, d)
+      await toggleTask(t, now, d)
+      const plan = (await getPlan(KEY, d))!
+      const kept = await keptKeys(KEY, plan.promise!, d)
+      expect(promiseLines(plan.promise, kept, false).map((l) => l.state)).toEqual(['kept', 'open', 'kept'])
+      expect(promiseLines(plan.promise, kept, true).map((l) => l.state)).toEqual(['kept', 'broken', 'kept'])
+      // Done the next day is too late for this day's promise
+      await completeQuest(b, new Date(2026, 10, 5, 9), d)
+      expect((await keptKeys(KEY, plan.promise!, d)).has(`q:${b}`)).toBe(false)
+    })
   })
 })

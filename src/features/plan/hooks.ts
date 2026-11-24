@@ -3,7 +3,8 @@ import { useEffect, useState } from 'react'
 import { db } from '../../db/db'
 import type { DayPlan } from '../../db/types'
 import { addDaysToKey } from '../quests/day'
-import { getPlan } from './repo'
+import { promiseLines, type PromiseLine } from './model'
+import { getPlan, keptKeys } from './repo'
 
 export interface PlanState {
   plan: DayPlan | undefined // undefined = no plan yet today
@@ -21,6 +22,26 @@ export function usePlan(todayKey: string): PlanState | undefined {
     ])
     // The dayKey index orders by day, so the last live row below today is the latest active day.
     return { plan, tomorrow, lastActive: last?.dayKey }
+  }, [todayKey])
+}
+
+export interface PromiseRecord {
+  yesterday: PromiseLine[] | undefined // yesterday's promise and how it went, if one was made
+  kept: number // every promised thing on past days, kept…
+  total: number // …out of this many
+}
+
+// The record of past promises. undefined while loading.
+export function usePromiseRecord(todayKey: string): PromiseRecord | undefined {
+  return useLiveQuery(async () => {
+    const past = (await db.dayPlans.where('dayKey').below(todayKey).toArray()).filter((p) => !p.deletedAt && p.promise?.length)
+    const days = await Promise.all(past.map(async (p) => ({ dayKey: p.dayKey, lines: promiseLines(p.promise, await keptKeys(p.dayKey, p.promise!), true) })))
+    const lines = days.flatMap((d) => d.lines)
+    return {
+      yesterday: days.find((d) => d.dayKey === addDaysToKey(todayKey, -1))?.lines,
+      kept: lines.filter((l) => l.state === 'kept').length,
+      total: lines.length,
+    }
   }, [todayKey])
 }
 
@@ -62,4 +83,26 @@ export function useNow(): Date {
     }
   }, [])
   return now
+}
+
+// Yesterday's promise card: "OK" hides it for the rest of the day, on this device.
+const PROMISE_SEEN_KEY = 'pebblework.plan.promise-seen'
+
+export function usePromiseSeen(todayKey: string): [boolean, () => void] {
+  const [seen, setSeen] = useState(() => {
+    try {
+      return localStorage.getItem(PROMISE_SEEN_KEY)
+    } catch {
+      return null
+    }
+  })
+  function dismiss() {
+    try {
+      localStorage.setItem(PROMISE_SEEN_KEY, todayKey)
+    } catch {
+      // private mode: it stays hidden until the page reloads
+    }
+    setSeen(todayKey)
+  }
+  return [seen === todayKey, dismiss]
 }
