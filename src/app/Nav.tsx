@@ -8,7 +8,6 @@ import {
   LogoMark,
   NotesIcon,
   ProjectsIcon,
-  PromisesIcon,
   ReviewIcon,
   SettingsIcon,
   ShelfIcon,
@@ -31,7 +30,6 @@ const TABS: Tab[] = [
   { label: 'Goals', to: href.identity, match: ['identity'], Icon: IdentityIcon },
   { label: 'Notes', to: href.notes, match: ['notes'], Icon: NotesIcon },
   { label: 'Review', to: href.review, match: ['review'], Icon: ReviewIcon },
-  { label: 'Promises', to: href.promises, match: ['promises'], Icon: PromisesIcon },
   { label: 'Shelf', to: href.shelf, match: ['shelf'], Icon: ShelfIcon },
   { label: 'Insights', to: href.insights, match: ['insights'], Icon: InsightsIcon },
   // Keep Settings last: the rail pins it to the bottom.

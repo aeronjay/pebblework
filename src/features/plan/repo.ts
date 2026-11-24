@@ -6,7 +6,7 @@ import type { DayPlan, PlanSlot, PromiseItem } from '../../db/types'
 import { addDaysToKey, dayKey, isMissed, isProject, isQuestCompletion, isoToDayKey } from '../quests/day'
 import { QuestError } from '../quests/errors'
 import { doItToday, updateQuest } from '../quests/repo'
-import { IF_THEN_MAX, MAX_PLAN_SLOTS, isValidTime, slotKey, sortSlots } from './model'
+import { IF_THEN_MAX, MAX_PLAN_SLOTS, PLAN_NOTE_MAX, isValidTime, slotKey, sortSlots } from './model'
 
 export async function getPlan(key: string, database: MarbleDB = db): Promise<DayPlan | undefined> {
   const p = await database.dayPlans.get(key)
@@ -45,7 +45,13 @@ export function nextPromise(cur: PromiseItem[] | undefined, slots: PlanSlot[], a
   return list.map((p) => (live.has(p.key) || p.brokenAt ? p : { ...p, brokenAt: iso }))
 }
 
-async function put(key: string, patch: Pick<DayPlan, 'slots'> & { skipped?: boolean; promise?: PromiseItem[] }, now: Date, database: MarbleDB): Promise<void> {
+// The day's note as stored: line ends evened out, blank lines around it dropped, capped. Empty = no note.
+export function cleanNote(note: string): string {
+  return note.replace(/\r\n?/g, '\n').trim().slice(0, PLAN_NOTE_MAX)
+}
+
+// `note` undefined = leave the day's note as it is.
+async function put(key: string, patch: Pick<DayPlan, 'slots'> & { skipped?: boolean; promise?: PromiseItem[]; note?: string }, now: Date, database: MarbleDB): Promise<void> {
   const iso = now.toISOString()
   await database.transaction('rw', database.dayPlans, async () => {
     const cur = await database.dayPlans.get(key)
@@ -57,6 +63,11 @@ async function put(key: string, patch: Pick<DayPlan, 'slots'> & { skipped?: bool
     if (promise.length) next.promise = promise
     else delete next.promise
     if (patch.promise?.length) next.promisedAt ??= iso
+    if (patch.note !== undefined) {
+      const note = cleanNote(patch.note)
+      if (note) next.note = note
+      else delete next.note
+    }
     if (dayKey(now) === key) next.reviewedAt ??= iso // changing a plan on its day means it's been looked at
     await database.dayPlans.put(next)
   })
@@ -72,9 +83,18 @@ export async function reviewPlan(key: string, now: Date = new Date(), database: 
   })
 }
 
+// What a plan sheet saves for a day: the planned slots, and optionally the day's note (undefined: leave it as it is).
+export interface PlanInput {
+  slots: PlanSlot[]
+  note?: string
+}
+
+const toInput = (input: PlanSlot[] | PlanInput): PlanInput => (Array.isArray(input) ? { slots: input } : input)
+
 // Replaces the day's plan and promises everything on it. Quests and loose ends must be live; an empty list is a valid
 // plan ("nothing needs a time today"). Anything promised earlier and left out is broken.
-export async function savePlan(key: string, slots: PlanSlot[], now: Date = new Date(), database: MarbleDB = db): Promise<void> {
+export async function savePlan(key: string, input: PlanSlot[] | PlanInput, now: Date = new Date(), database: MarbleDB = db): Promise<void> {
+  const { slots, note } = toInput(input)
   const clean = cleanSlots(slots)
   const [quests, tasks] = await Promise.all([
     database.quests.bulkGet(clean.flatMap((s) => (s.questId ? [s.questId] : []))),
@@ -82,7 +102,7 @@ export async function savePlan(key: string, slots: PlanSlot[], now: Date = new D
   ])
   if ([...quests, ...tasks].some((x) => !x || x.deletedAt)) throw new QuestError('One of those no longer exists.')
   const titles = new Map<string, string>([...quests.map((q) => [`q:${q!.id}`, q!.title] as const), ...tasks.map((t) => [`t:${t!.id}`, t!.title] as const)])
-  await put(key, { slots: clean, promise: clean.map((s) => ({ key: slotKey(s), title: titles.get(slotKey(s)) ?? '' })) }, now, database)
+  await put(key, { slots: clean, note, promise: clean.map((s) => ({ key: slotKey(s), title: titles.get(slotKey(s)) ?? '' })) }, now, database)
 }
 
 // Which promised things were finished on day `key`: a quest with any completion that day (a project: any work on its
@@ -137,8 +157,9 @@ export async function bringToDay(id: string, key: string, now: Date = new Date()
 
 // Saves the plan for day `key` (today, or tomorrow the evening before), first bringing each picked quest to that day
 // (see bringToDay). A quest due today that moves to tomorrow leaves today's plan too. Loose ends need nothing: their
-// date is only a reminder.
-export async function planDay(key: string, slots: PlanSlot[], now: Date = new Date(), database: MarbleDB = db): Promise<void> {
+// date is only a reminder. The day's note, if given, is saved with it.
+export async function planDay(key: string, input: PlanSlot[] | PlanInput, now: Date = new Date(), database: MarbleDB = db): Promise<void> {
+  const { slots, note } = toInput(input)
   const today = dayKey(now)
   if (key < today || key > addDaysToKey(today, 1)) throw new QuestError('Plan today or tomorrow.')
   cleanSlots(slots) // refuse a bad plan before moving anything
@@ -154,6 +175,6 @@ export async function planDay(key: string, slots: PlanSlot[], now: Date = new Da
     if (key !== today && before?.dueDate === today && id === s.questId) leftToday.push(slotKey(s))
     ready.push({ ...s, questId: id })
   }
-  await savePlan(key, ready, now, database)
+  await savePlan(key, { slots: ready, note }, now, database)
   for (const slot of leftToday) await unplanSlot(today, slot, now, database)
 }

@@ -4,17 +4,20 @@ import { CornerDownRight, Plus, X } from 'lucide-react'
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
 import { useEffect, useId, useRef, useState, type FormEvent, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
+import { db } from '../../db/db'
 import type { DayPlan, PlanSlot, Task } from '../../db/types'
 import { trapTab, useModal } from '../board/components/a11y'
 import { formatDayInline } from '../quests/components/describe'
 import { useToast } from '../quests/components/toastContext'
 import { isoToDayKey, parseDayKey } from '../quests/day'
+import { createTask } from '../tasks/repo'
 import type { QuestItem } from '../quests/hooks'
 import { CATEGORY } from '../quests/meta'
 import { useNow } from './hooks'
 import {
   IF_THEN_MAX,
   MAX_PLAN_SLOTS,
+  PLAN_NOTE_MAX,
   isValidTime,
   planCandidates,
   planClock,
@@ -28,7 +31,7 @@ import {
   taskCandidates,
   type PlanDay,
 } from './model'
-import { planDay, skipPlan } from './repo'
+import { cleanNote, planDay, skipPlan } from './repo'
 
 interface Props {
   open: boolean
@@ -79,7 +82,9 @@ function sameDraft(a: Choice[], b: Choice[]): boolean {
   return x.length === y.length && x.every((p, i) => p.key === y[i].key && p.time === y[i].time && p.ifThen.trim() === y[i].ifThen.trim())
 }
 
-function Sheet({ todayKey, items, tasks, plans, day: initialDay, onClose }: Props) {
+const LOOSE_END_MAX = 200
+
+function Sheet({ todayKey, items, tasks: liveTasks, plans, day: initialDay, onClose }: Props) {
   const reduce = useReducedMotion()
   const toast = useToast()
   const now = useNow()
@@ -90,6 +95,9 @@ function Sheet({ todayKey, items, tasks, plans, day: initialDay, onClose }: Prop
   useModal(closeBtn)
 
   const [day, setDay] = useState<PlanDay>(initialDay)
+  // Loose ends made in this sheet, until the live list catches up with them.
+  const [created, setCreated] = useState<Task[]>([])
+  const tasks = [...liveTasks, ...created.filter((c) => !liveTasks.some((t) => t.id === c.id))]
   const ahead = day === 'tomorrow' ? planDayKey(todayKey, 'tomorrow') : undefined
   const plan = plans[day]
   const entriesFor = (d: PlanDay) =>
@@ -105,8 +113,12 @@ function Sheet({ todayKey, items, tasks, plans, day: initialDay, onClose }: Prop
   }))
   const picks = drafts[day]
   const setPicks = (list: Choice[]) => setDrafts((d) => ({ ...d, [day]: list }))
+  // The day's note: anything about the day that doesn't need a time.
+  const [notes, setNotes] = useState<Record<PlanDay, string>>(() => ({ today: plans.today?.note ?? '', tomorrow: plans.tomorrow?.note ?? '' }))
+  const note = notes[day]
+  const noteChanged = (d: PlanDay) => cleanNote(notes[d]) !== (plans[d]?.note ?? '')
   const [saving, setSaving] = useState(false)
-  const changed = (d: PlanDay) => !sameDraft(drafts[d], fromPlan(plans[d], entries))
+  const changed = (d: PlanDay) => !sameDraft(drafts[d], fromPlan(plans[d], entries)) || noteChanged(d)
   // Promised things can't leave the plan quietly: the remove button asks first (`breaking`), since taking one out breaks
   // the promise. Saving anything not promised yet is a new promise, made by holding the button, not a quick tap.
   const promised = promisedKeys(plan)
@@ -139,6 +151,25 @@ function Sheet({ todayKey, items, tasks, plans, day: initialDay, onClose }: Prop
     setPicks(byTime([...picks, { key: entry.key, time: suggestTime(entry.dueTime, latest, planClock(now, day)), ifThen: '' }]))
   }
 
+  // A new loose end, made here and put straight into the plan.
+  const [newTask, setNewTask] = useState('')
+  const [adding, setAdding] = useState(false)
+  async function addLooseEnd() {
+    const title = newTask.trim()
+    if (!title || full || adding) return
+    setAdding(true)
+    const task = await toast.run(async () => {
+      const id = await createTask({ title })
+      return db.tasks.get(id)
+    })
+    setAdding(false)
+    if (!task) return
+    setCreated((c) => [...c, task])
+    setNewTask('')
+    const latest = byTime(picks).at(-1)?.time
+    setPicks(byTime([...picks, { key: `t:${task.id}`, time: suggestTime(undefined, latest, planClock(now, day)), ifThen: '' }]))
+  }
+
   function remove(key: string) {
     setBreaking(null)
     setPicks(picks.filter((p) => p.key !== key))
@@ -161,7 +192,7 @@ function Sheet({ todayKey, items, tasks, plans, day: initialDay, onClose }: Prop
         const map = entriesFor(d)
         await planDay(
           planDayKey(todayKey, d),
-          drafts[d].map((p) => ({ ...map.get(p.key)!.ref, time: p.time, ifThen: p.ifThen })),
+          { slots: drafts[d].map((p) => ({ ...map.get(p.key)!.ref, time: p.time, ifThen: p.ifThen })), note: notes[d] },
         )
       }
       return true
@@ -385,9 +416,51 @@ function Sheet({ todayKey, items, tasks, plans, day: initialDay, onClose }: Prop
                   ))}
                 </AnimatePresence>
               </ol>
+              {!full && (
+                <div className="mt-1.5 flex items-center gap-2.5 rounded-[14px] bg-elevated/70 py-1 pr-1 pl-3 ring-1 ring-line transition focus-within:ring-2 focus-within:ring-ring/40">
+                  <span aria-hidden className="size-[15px] shrink-0 rounded-full border-[1.5px] border-dashed border-line-strong" />
+                  <input
+                    value={newTask}
+                    maxLength={LOOSE_END_MAX}
+                    onChange={(e) => setNewTask(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key !== 'Enter' || e.metaKey || e.ctrlKey) return
+                      e.preventDefault() // not the plan's submit
+                      void addLooseEnd()
+                    }}
+                    aria-label={`New loose end for ${day}`}
+                    placeholder={`New loose end for ${day}`}
+                    className="min-w-0 flex-1 bg-transparent py-1.5 text-[14px] text-ink outline-none placeholder:text-faint"
+                  />
+                  <button
+                    type="button"
+                    disabled={!newTask.trim() || adding}
+                    onClick={() => void addLooseEnd()}
+                    className="shrink-0 rounded-control px-3 py-1.5 text-[13px] font-semibold text-ink transition hover:bg-sunken disabled:text-faint disabled:hover:bg-transparent outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  >
+                    Add
+                  </button>
+                </div>
+              )}
               <p className="px-2.5 pt-2.5 pb-1 text-[12px] leading-relaxed text-muted">
                 Leave the rest of the day unplanned. Things usually take longer than we think.
               </p>
+            </section>
+
+            {/* The day's note: the rest of the day in your own words. */}
+            <section className="mx-3 mt-4 sm:mx-5">
+              <label htmlFor={`${titleId}-note`} className="block px-2.5 pb-1.5 text-[12.5px] font-semibold text-muted">
+                Note
+              </label>
+              <textarea
+                id={`${titleId}-note`}
+                value={note}
+                maxLength={PLAN_NOTE_MAX}
+                onChange={(e) => setNotes((n) => ({ ...n, [day]: e.target.value }))}
+                rows={Math.min(10, Math.max(3, note.split('\n').length + 1))}
+                placeholder={day === 'today' ? 'Anything else about today, in your own words' : 'Anything else about tomorrow, in your own words'}
+                className="block w-full resize-none rounded-[14px] border border-line bg-surface px-3.5 py-2.5 text-[14px] leading-relaxed text-ink outline-none transition placeholder:text-faint focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/30"
+              />
             </section>
 
             {/* What could go in it, grouped by when it's due. */}
@@ -476,7 +549,7 @@ function Sheet({ todayKey, items, tasks, plans, day: initialDay, onClose }: Prop
                 disabled={saving}
                 className="rounded-control bg-ink px-4 py-2 text-[13px] font-semibold text-canvas shadow-card transition hover:opacity-90 active:scale-[.98] disabled:opacity-50 outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-elevated"
               >
-                {picks.length === 0 && plan?.slots.length ? 'Clear plan' : 'Save plan'}
+                {picks.length === 0 && plan?.slots.length && !note.trim() ? 'Clear plan' : 'Save plan'}
               </button>
             )}
           </footer>

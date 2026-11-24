@@ -49,6 +49,7 @@ function Home() {
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
       if (e.key !== 'n' || e.metaKey || e.ctrlKey || e.altKey || sheet || planning) return
+      if (document.querySelector('[aria-modal="true"]')) return // a day picked on the calendar is open
       const el = e.target as HTMLElement
       if (el.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName)) return
       e.preventDefault()
@@ -202,7 +203,7 @@ function Home() {
             <QuestJar />
           </div>
           <div className={`order-5 min-w-0 ${STAGE_CARD}`}>
-            <QuestCalendar />
+            <QuestCalendar onPlan={setPlanning} />
           </div>
         </aside>
       </div>

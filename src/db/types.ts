@@ -267,6 +267,7 @@ export interface DayPlan extends Meta {
   reviewedAt?: string
   promisedAt?: string // first promise made for this day
   promise?: PromiseItem[] // everything ever promised for this day, including what was taken out since
+  note?: string // the day's free-form note, written with the plan
 }
 
 // Free-form note. `questId` optionally links it to a project quest; the link survives the quest's deletion.

@@ -11,9 +11,10 @@ interface Props {
   index: number
   onHover: (key: string, el: HTMLElement) => void
   onFocusCell: (key: string, el: HTMLElement) => void
+  onOpen: (key: string) => void // shows the day's promise and note
 }
 
-export function DayCell({ day, inMonth, focusable, lifting, index, onHover, onFocusCell }: Props) {
+export function DayCell({ day, inMonth, focusable, lifting, index, onHover, onFocusCell, onOpen }: Props) {
   const { status } = day
   const style: CSSProperties & Record<'--qc-delay', string> = {
     background: tintBackground(day),
@@ -31,10 +32,12 @@ export function DayCell({ day, inMonth, focusable, lifting, index, onHover, onFo
       aria-label={dayAriaLabel(day)}
       aria-current={day.isToday ? 'date' : undefined}
       aria-selected={false}
+      aria-haspopup="dialog"
+      onClick={() => onOpen(day.key)}
       onPointerEnter={(e: PointerEvent<HTMLDivElement>) => onHover(day.key, e.currentTarget)}
       onFocus={(e: FocusEvent<HTMLDivElement>) => onFocusCell(day.key, e.currentTarget)}
       style={style}
-      className={`qc-cell group mx-auto flex w-full max-w-[60px] h-11 select-none items-center justify-center rounded-[11px] outline-none transition-[background,opacity,transform] duration-150 ease-out-soft focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring sm:h-12 lg:h-9 tall:h-[30px] [@media(min-height:860px)]:tall:h-9 ${cellClass(day, inMonth)} ${lifting ? 'qc-lift' : ''}`}
+      className={`qc-cell group mx-auto flex cursor-pointer w-full max-w-[60px] h-11 select-none items-center justify-center rounded-[11px] outline-none transition-[background,opacity,transform] duration-150 ease-out-soft focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring sm:h-12 lg:h-9 tall:h-[30px] [@media(min-height:860px)]:tall:h-9 ${cellClass(day, inMonth)} ${lifting ? 'qc-lift' : ''}`}
     >
       {/* Hover wash, kept separate so it composes with the tint. */}
       <span aria-hidden className="pointer-events-none absolute inset-0 rounded-[inherit] bg-ink opacity-0 transition-opacity duration-150 group-hover:opacity-[0.04]" />

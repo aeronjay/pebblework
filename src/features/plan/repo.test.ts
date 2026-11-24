@@ -23,6 +23,27 @@ describe('plan repo', () => {
     expect((await getPlan(KEY, d))?.slots).toEqual([{ questId: b, time: '07:30' }])
   })
 
+  it('keeps the day’s note with the plan; other changes leave it alone', async () => {
+    const d = freshDb()
+    const a = await createQuest({ category: 'dq', title: 'Walk' }, now, d)
+    await planDay(KEY, { slots: [{ questId: a, time: '09:00' }], note: '\r\n  Wake up early\r\ndo projects early\n\n' }, now, d)
+    expect((await getPlan(KEY, d))?.note).toBe('Wake up early\ndo projects early')
+    await retimeSlot(KEY, `q:${a}`, '10:00', now, d)
+    await savePlan(KEY, [{ questId: a, time: '11:00' }], now, d) // no note given: unchanged
+    expect((await getPlan(KEY, d))?.note).toBe('Wake up early\ndo projects early')
+    await planDay(KEY, { slots: [], note: '   ' }, now, d)
+    expect((await getPlan(KEY, d))?.note).toBeUndefined()
+  })
+
+  it('a plan can be just a note', async () => {
+    const d = freshDb()
+    await planDay(KEY, { slots: [], note: 'Ask about the email' }, now, d)
+    const plan = await getPlan(KEY, d)
+    expect(plan?.slots).toEqual([])
+    expect(plan?.note).toBe('Ask about the email')
+    expect(plan?.promise).toBeUndefined()
+  })
+
   it('refuses more than three, duplicates, bad times and deleted quests', async () => {
     const d = freshDb()
     const ids = await Promise.all([1, 2, 3, 4].map((i) => createQuest({ category: 'sq', title: `q${i}` }, now, d)))

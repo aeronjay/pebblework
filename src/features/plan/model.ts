@@ -9,6 +9,7 @@ import { isDueToday } from '../quests/components/lists'
 
 export const MAX_PLAN_SLOTS = 3
 export const IF_THEN_MAX = 120
+export const PLAN_NOTE_MAX = 2000
 export const RETURN_AFTER_DAYS = 3 // this many days or more without a finished quest makes today a fresh start
 export const EVENING_HOUR = 18 // from this hour on, Home asks about tomorrow instead of today
 

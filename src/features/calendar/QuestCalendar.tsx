@@ -10,7 +10,9 @@ import { claimAll } from '../quests/claim'
 import { emitClaim, onClaimRequest } from '../quests/claimBus'
 import { dayKey, monthGrid, type MonthDay } from '../quests/day'
 import { useClaimable, useMonth } from '../quests/hooks'
+import type { PlanDay } from '../plan/model'
 import { ClaimButton } from './ClaimButton'
+import { DayDetail } from './DayDetail'
 import { DayCell } from './DayCell'
 import { DayTooltip, TIP_WIDTH, type TipPos } from './DayTooltip'
 import { Legend } from './Legend'
@@ -24,7 +26,8 @@ const MESSAGE_MS = 4500
 const iconBtn =
   'inline-flex size-8 items-center justify-center rounded-[10px] text-muted transition-colors duration-150 hover:bg-sunken hover:text-ink focus-visible:outline-2 focus-visible:outline-ring'
 
-export function QuestCalendar() {
+// `onPlan` opens the plan sheet from a picked day (today or tomorrow).
+export function QuestCalendar({ onPlan }: { onPlan?: (day: PlanDay) => void }) {
   const today = useToday()
   const [month, setMonth] = useState(() => startOfMonth(new Date()))
   const [dir, setDir] = useState<1 | -1>(1)
@@ -33,6 +36,7 @@ export function QuestCalendar() {
   const [busy, setBusy] = useState(false)
   const [lifting, setLifting] = useState<ReadonlySet<string>>(() => new Set())
   const [message, setMessage] = useState<string | null>(null)
+  const [picked, setPicked] = useState<string | null>(null) // the day open in DayDetail
   const reduce = useReducedMotion()
 
   const gridRef = useRef<HTMLDivElement>(null)
@@ -112,6 +116,11 @@ export function QuestCalendar() {
     setTip({ key, pos: { left, top: c.top - w.top, arrow: center - left } })
   }
 
+  function openDay(key: string) {
+    setTip(null)
+    setPicked(key)
+  }
+
   function onGridKey(e: KeyboardEvent<HTMLDivElement>) {
     const current = cells.find((c) => c.day.key === rovingKey)
     if (!current) return
@@ -119,6 +128,11 @@ export function QuestCalendar() {
       e.preventDefault()
       refocus.current = true
       goTo(current.day.date, current.day.key)
+      return
+    }
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault()
+      openDay(current.day.key)
       return
     }
     if (e.key === 'Escape') {
@@ -260,6 +274,7 @@ export function QuestCalendar() {
                       setFocusKey(key)
                       placeTip(key, el)
                     }}
+                    onOpen={openDay}
                   />
                 ))}
               </div>
@@ -293,6 +308,7 @@ export function QuestCalendar() {
           </div>
         </div>
       </div>
+      <DayDetail dayKey={picked} todayKey={dayKey(today)} onPlan={onPlan} onClose={() => setPicked(null)} />
     </section>
   )
 }

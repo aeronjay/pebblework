@@ -11,7 +11,6 @@ import { IdentityScreen } from './screens/IdentityScreen'
 import { InsightsScreen } from './screens/InsightsScreen'
 import { NotesScreen } from './screens/NotesScreen'
 import { ProjectsScreen } from './screens/ProjectsScreen'
-import { PromisesScreen } from './screens/PromisesScreen'
 import { ReviewScreen } from './screens/ReviewScreen'
 import { SettingsScreen } from './screens/SettingsScreen'
 import { ShelfScreen } from './screens/ShelfScreen'
@@ -32,8 +31,6 @@ function Screen({ route }: { route: Route }) {
       return <NotesScreen />
     case 'review':
       return <ReviewScreen />
-    case 'promises':
-      return <PromisesScreen />
     case 'shelf':
       return <ShelfScreen />
     case 'insights':

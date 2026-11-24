@@ -45,6 +45,21 @@ export function usePromiseRecord(todayKey: string): PromiseRecord | undefined {
   }, [todayKey])
 }
 
+export interface DayRecord {
+  promise: PromiseLine[] // what was promised for the day and how it went; empty: no promise
+  note: string | undefined // the day's note, written with its plan
+}
+
+// One day's promise and note, for the calendar. undefined while loading (or with no day).
+export function useDayRecord(key: string | undefined, todayKey: string): DayRecord | undefined {
+  return useLiveQuery(async () => {
+    if (!key) return undefined
+    const plan = await getPlan(key)
+    const promise = plan?.promise?.length ? promiseLines(plan.promise, await keptKeys(key, plan.promise), key < todayKey) : []
+    return { promise, note: plan?.note }
+  }, [key, todayKey])
+}
+
 // "Not tonight" on the evening prompt: remembered on this device for that one evening. It's not a skipped plan, so
 // the morning still asks.
 const TONIGHT_KEY = 'pebblework.plan.not-tonight'
